@@ -14,15 +14,15 @@ def get_top_cluster_sizes(R0_map:np.ndarray, get_top_n: Union[list, int], na=Fal
     """
     Find connected clusters and return rank-ordered size along with corresponding  id
     """
-    R0_clusters = label_connected(R0_map)
+    R0_clusters = label_connected(R0_map)[0]
     cluster_sizes, cluster_ids = cluster_freq_count(labeled=R0_clusters)
     R0_clusters = R0_clusters * np.isin(R0_clusters, cluster_ids[:get_top_n])  # select top n clusters
     return R0_clusters, cluster_sizes[:get_top_n], cluster_ids[:get_top_n]
 
 
 def label_connected(R0_map:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    labeled = label(R0_map, CONNECTIVITY_ELEMENT)[0]
-    return labeled
+    labeled, num_comp = label(R0_map, CONNECTIVITY_ELEMENT)
+    return labeled, num_comp
 
 def cluster_freq_count(labeled:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """

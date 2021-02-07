@@ -28,7 +28,7 @@ def orchestrate_main(ensemble_name):  # import & run delegator methods
     from delegator_methods import get_single_R0_cluster_map, fragment_R0_map
     alpha_steps = 'auto'
     coarse_grain_factor = 1
-    iterations = 8
+    iterations = 2
     beta_index = 1
 
     R0_out = get_single_R0_cluster_map(ensemble_name=ensemble_name, coarse_grain_factor=coarse_grain_factor,

@@ -57,15 +57,16 @@ def plot_top_cluster_sizes_vs_beta(ensemble_name):
 
 def plot_cluster_size_vs_alpha(iteration:int, alpha_steps:Union[list, np.ndarray],
                                largest_cluster_size_vs_alpha: np.ndarray,
-                               discontinuity_index:int):
+                               discontinuity_index:Union[int, None] = None):
     """
     Plot cluster sizes for one iteration and one value of alpha.
     """
     plt.title(f'cluster sizes & index | iteration {iteration}')
     plt.plot(alpha_steps, largest_cluster_size_vs_alpha)
     plt.scatter(alpha_steps, largest_cluster_size_vs_alpha)
-    plt.plot([alpha_steps[discontinuity_index - 1], alpha_steps[discontinuity_index - 1]],
-             [0, largest_cluster_size_vs_alpha[discontinuity_index - 1]])
+    if discontinuity_index is not None:
+        plt.plot([alpha_steps[discontinuity_index - 1], alpha_steps[discontinuity_index - 1]],
+                 [0, largest_cluster_size_vs_alpha[discontinuity_index - 1]])
     plt.show()
     return
 

@@ -13,32 +13,86 @@ from cluster_find import get_top_cluster_sizes, label_connected, cluster_freq_co
 from run_main import STRUCTURING_ELEMENT
 
 
-def discontinuity_detect(cluster_sizes:np.ndarray, R0_map:np.ndarray, alpha_steps:Union[list, np.ndarray],
-                         cluster_target: Union[None, np.ndarray], test_top:int = 5) -> int:
+def find_cluster_size_vs_alpha(alpha_steps, R0_map):
+    """
+    Iterate the maximum-cluster size-change vs alpha and return.
+    """
+    time = datetime.datetime.now()
+    largest_cluster_size_vs_alpha = np.zeros_like(alpha_steps)
+    for index in range(len(alpha_steps)):
+        R0_map_alpha = np.where(R0_map > alpha_steps[index], R0_map, 0)
+        cluster_sizes = get_top_cluster_sizes(R0_map=R0_map_alpha, get_top_n=1)[1]  # find largest clusters
+        largest_cluster_size_vs_alpha[index] = cluster_sizes[0]
+
+    print(f'Time taken to work out cluster sizes vs alpha: {datetime.datetime.now() - time}')
+    return largest_cluster_size_vs_alpha
+
+
+def discontinuity_detect(cluster_sizes:np.ndarray, R0_map:np.ndarray,
+                         alpha_steps:Union[list, np.ndarray], cluster_target: Union[None, np.ndarray],
+                         test_top:int = 5) -> Tuple[Union[int, None], Union[np.ndarray, None]]:
     """
     Find largest increase due to a cluster-cluster join (i.e. discontinuity). Return the first
     alpha-index which connects 2 or more clusters ranked in the top N -- 5 by default.
     """
     assert len(cluster_sizes) > 1, f'Error, length of cluster-sizes {len(cluster_sizes)}, expected > 1.'
+    # Todo fix alpha-index iteration - if alpha index < previous continue that way only the next iteration is targeted.
+
     arg_sorted = np.argsort(np.gradient(cluster_sizes))[::-1]
     for alpha_index in arg_sorted:
         R0_clusters1, sizes, ids = get_top_cluster_sizes(R0_map=R0_map > alpha_steps[alpha_index-1], get_top_n=test_top)
         R0_clusters2 = get_top_cluster_sizes(R0_map=R0_map > alpha_steps[alpha_index], get_top_n=1)[0]
         number_of_joins = np.unique(R0_clusters1[np.where(R0_clusters2)])[1:]  # which clusters join up ?
-        if len(number_of_joins) >= 2 and cluster_target is None:
-            # Expected 1 or more cluster-joins of the top-ranked clusters.'
+        # For the 1st iteration, define the cluster-target as the first largest join
+        if len(number_of_joins) >= 2 and cluster_target is None:  # Expected 1 or more cluster-joins of the top-ranked clusters.
             cluster_target = np.zeros_like(R0_map)
             cluster_target[np.where(R0_clusters1 == ids[0])] = ids[0]
             cluster_target[np.where(R0_clusters1 == ids[1])] = ids[1]
             return alpha_index, cluster_target
 
-        x = [True for i in np.unique(cluster_target)[1:] if i in number_of_joins]
-        print('check if joins in 1-2', x)
-        assert 0
         if len(number_of_joins) >= 2:
-            ''
+            # Are the cluster-targets in the join ?
 
-    sys.exit('Error, no cluster-joins detected')
+            target_joins_present = all((lambda id: True if id in number_of_joins else False)(id)
+                                       for id in np.unique(cluster_target)[1:])
+
+            print('Are target-joins in this alpha-value ?', target_joins_present)
+            plt.title(f'R0 disconnected alpha {alpha_steps[alpha_index-1]}')
+            plot_R0_clusters(R0_map=R0_clusters1)
+
+            plt.title(f'R0 connected alpha {alpha_steps[alpha_index]}')
+            plot_R0_clusters(R0_map=R0_clusters2)
+
+            plt.title('cluster targets for iteration')
+            plot_R0_clusters(R0_map=cluster_target, rank=2)
+            print('check if joins in 1-2', target_joins_present)
+
+            if not target_joins_present:  # target-clusters are not present in the cluster-join, continue to next alpha.
+                continue
+
+            targets_connects = [None, None]  # Test each target-cluster connects in the next step.
+            for count, id in enumerate(np.unique(cluster_target)[1:]):
+                cluster_target_indices = np.where(cluster_target == id)
+                disconnected_and_target = np.unique(R0_clusters1[cluster_target_indices])
+                connected_and_target = np.unique(R0_clusters2[cluster_target_indices])
+
+                print('projection onto disconnected ', disconnected_and_target)
+                print('projection onto connected ', connected_and_target)
+                # assert len(disconnected_and_target) == 1, f'Error, expect projection of target {id} and R0-disconnected to match'
+                # assert id == disconnected_and_target[0],  f'Error, expect projection of target {id} and R0-disconnected to match'
+
+                assert len(connected_and_target) == 1 , f'Error, expect projection of target {id} and R0-connected to match'
+
+                # Is the cluster-target present in the newly-connected R0 cluster
+                targets_connects[count] = True if connected_and_target[0] else False
+
+            print('targets in connected', targets_connects)
+            if all(target_present for target_present in targets_connects):
+                return alpha_index, cluster_target
+
+
+
+    return None, None  # we have not detected any more cluster-discontunities
 
 
 def get_alpha_steps(alpha_steps: Union[iter, float, int, str], R0_min:float, R0_max:float) -> Union[list, np.ndarray]:
@@ -72,6 +126,8 @@ def group_cluster_joins(pre_connected_clusters:np.ndarray, connecting_patches:np
             # two or more neighbours suggests that element id connects them, either partially or fully
             join_ids = (str(id) for id in neighbour_ids)
             join_ids = '_'.join(join_ids)
+            # todo think about if you want to store the patch id ?
+            #      it may be better to store coordinates of elements
             cluster_joins[join_ids].append(connect_patch_id)
             is_connection_present = True
 
@@ -88,26 +144,21 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
     """
     time = datetime.datetime.now()
     # patches which become non-zero in the alpha-step and belong to the post-connected cluster
-    became_non_zero = np.where(np.where(R0_post_connect, 1, 0) - np.where(R0_pre_connect, 1, 0) > 0, 1, 0)
-    # super-set of patches which become non-zero and connect the largest cluster fragment
-    plt.title('became non-zero')
-    plt.imshow(became_non_zero)
-    plt.show()
+    became_non_zero = R0_post_connect - np.where(R0_pre_connect, 1, 0)
+    became_non_zero = became_non_zero >= 1
 
-    R0_pre_connect_cluster_interface = np.zeros_like(R0_pre_connect)
-    for id in cluster_ids:  # Find the union of all cluster interfaces,
-        R0_target = np.where(R0_pre_connect == id, 1, 0)
-        R0_pre_connect_cluster_interface += binary_dilation(R0_target, structure=STRUCTURING_ELEMENT,
-                                              iterations=3)
+    R0_pre_connect_target_interface = np.zeros_like(R0_pre_connect)
+    for id in cluster_ids:  # Find an approximate interface for the cluster-targets.
+        R0_pre_connect_target_interface += binary_dilation(np.where(cluster_targets == id, 1, 0),
+                                                            structure=STRUCTURING_ELEMENT, iterations=3)
 
-    assert 0
-    # The union of cluster-interfaces & the patches which became non-zero must contain the critically connecting patches
-    R0_pre_connect_cluster_interface = R0_pre_connect_cluster_interface > 1
+    # The union of cluster-target interface & the patches which became non-zero must contain the critically connecting patches
+    R0_pre_connect_target_interface = R0_pre_connect_target_interface > 1
+    R0_pre_connect_target_interface = R0_pre_connect_target_interface & became_non_zero
 
-    R0_pre_connect_cluster_interface = R0_pre_connect_cluster_interface & became_non_zero
-
+    # Find dictionary-representation of cluster-joins and connecting patches
     cluster_joins, connecting_patches_ = group_cluster_joins(pre_connected_clusters=R0_pre_connect,
-                                                             connecting_patches=R0_pre_connect_cluster_interface)
+                                                             connecting_patches=R0_pre_connect_target_interface)
 
     print('cluster joins', cluster_joins)
     max_join = 0
@@ -117,14 +168,14 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
         join_size = 0
         for id in join_ids:
             join_size += cluster_sizes[np.where(cluster_ids == int(id))]
-        if join_size > max_join:
+        if join_size > max_join:  # remove the elements which give the largest join # todo <- Re-think this, it might be redundant
             max_join = join_size
             remove_elements = cluster_joins[cluster_join]
 
-    print('--> to remove ', remove_elements)
+    print('--> elements to remove ', remove_elements)
     assert remove_elements is not None, f'Error, expected non-zero remove-elements. Found {remove_elements}'
-
     critically_connecting = np.in1d(connecting_patches_.flatten(), remove_elements)
+
     print(f'Time taken to process fragmentation-splitting {datetime.datetime.now() - time}\n')
     return critically_connecting.reshape(connecting_patches_.shape), max_join
 
@@ -135,29 +186,12 @@ def test_removal_disconnects(to_remove:np.ndarray, join_size:int, R0_map_connect
     """
     R0_map_connected[np.where(to_remove)] = 0
     R0_fragmented = label_connected(R0_map=R0_map_connected)[0]
-    plt.title('R0 fragmented')
-    plot_R0_clusters(R0_map=R0_fragmented)
     cluster_sizes = cluster_freq_count(labeled=R0_fragmented)[0]
-    print('cluster sizes', cluster_sizes)
     assert len(cluster_sizes) > 1, f'Error, expected cluster-break. Found  only {len(cluster_sizes)} cluster-elements.'
     assert join_size <= cluster_sizes.sum(), f'Error, expected join size {join_size} <= {cluster_sizes.sum()}'
     assert len(np.where(R0_map_connected)[0]) >= 1.1 * max(cluster_sizes), f'Error, expected major fragmentation.'
     return True
 
-
-def find_cluster_size_vs_alpha(alpha_steps, R0_map):
-    """
-    Iterate the maximum-cluster size-change vs alpha and return.
-    """
-    time = datetime.datetime.now()
-    largest_cluster_size_vs_alpha = np.zeros_like(alpha_steps)
-    for index in range(len(alpha_steps)):
-        R0_map_alpha = np.where(R0_map > alpha_steps[index], R0_map, 0)
-        cluster_sizes = get_top_cluster_sizes(R0_map=R0_map_alpha, get_top_n=1)[1]  # find largest clusters
-        largest_cluster_size_vs_alpha[index] = cluster_sizes[0]
-
-    print(f'Time taken to work out cluster sizes vs alpha: {datetime.datetime.now() - time}')
-    return largest_cluster_size_vs_alpha
 
 def test_final_step(R0_map_disconnected: np.ndarray, cluster_ids:np.ndarray, patches_to_remove:np.ndarray) -> bool:
     """
@@ -183,6 +217,30 @@ def test_final_step(R0_map_disconnected: np.ndarray, cluster_ids:np.ndarray, pat
     return False  # the critically connecting patches do not connect the target-cluster
 
 
+
+def update_cluster_targets(R0_map: np.ndarray, R0_connected:np.ndarray,
+                           patches:np.ndarray, alpha:float) -> np.ndarray:
+    """
+    Update cluster targets, both the shape and value.
+    """
+    R0_fragmented_ranked = R0_map * np.logical_not(patches) > alpha
+    R0_fragmented_ranked = get_top_cluster_sizes(R0_fragmented_ranked, get_top_n=10)[0]
+    cluster_targets = get_top_cluster_sizes(R0_connected * np.logical_not(patches), get_top_n=2)[0]
+    cluster_targets_ = np.zeros_like(cluster_targets)
+    cluster_targets_[:] = cluster_targets  # update the copy
+    for target in np.unique(cluster_targets)[1:]:
+        target_indices = np.where(cluster_targets == target)
+        new_rank_value = np.unique(R0_fragmented_ranked[target_indices])
+        assert len(new_rank_value) == 1, f'Error, something has gone wrong. Expected length of 1 found {new_rank_value}'
+        if new_rank_value[0] == target:  # rank of target is preserved for this iteration
+            continue
+
+        print(f'previous rank of {target} now cast to {new_rank_value[0]}')
+        cluster_targets_[np.where(target_indices)] = new_rank_value[0]  # cast new rank to cluster target
+
+    return cluster_targets_
+
+
 def fragmentation_iteration(alpha_steps:list, R0_map:np.ndarray, cluster_targets:np.ndarray,
                             alpha_index:int) -> Tuple[np.ndarray, Union[np.ndarray, None]]:
     """
@@ -194,33 +252,19 @@ def fragmentation_iteration(alpha_steps:list, R0_map:np.ndarray, cluster_targets
     # assume top n sub-clusters in pre-connected
     R0_map_disconnected, cluster_sizes, cluster_ids  = get_top_cluster_sizes(R0_map=R0_map_disconnected, get_top_n=10)
 
-    plt.title('R0 disconnected')
-    plot_R0_clusters(R0_map=R0_map_disconnected)
-
-    plt.title('R0 targets')
-    plot_R0_clusters(R0_map=cluster_targets)
-
     # find clusters post connected cluster state
     R0_map_connected = np.where(R0_map > alpha_steps[alpha_index], R0_map, 0)
     # assume connected cluster is largest-ranked
     R0_map_connected = get_top_cluster_sizes(R0_map=R0_map_connected, get_top_n=1)[0]
-
-    plt.title('R0 connected')
-    plot_R0_clusters(R0_map=R0_map_connected)
-
 
     to_remove, join_size = find_critically_connecting_patches(R0_pre_connect=R0_map_disconnected,
                                                               R0_post_connect=R0_map_connected,
                                                               cluster_targets=cluster_targets,
                                                               cluster_ids=cluster_ids, cluster_sizes=cluster_sizes)
 
-    plt.title('critical patches')
-    plt.imshow(to_remove)
-    plt.show()
-
-    if alpha_steps[alpha_index] < 1 and not test_final_step(R0_map_disconnected, cluster_ids, to_remove):
+    if alpha_steps[alpha_index] < 1 and not test_final_step(R0_map_disconnected, cluster_ids, to_remove):  # todo could remove this
         # For the last step, did the critically-connecting patches produce a cluster-join on the relevant cluster ?
-        return R0_map, None
+        return to_remove, None
 
 
     assert test_removal_disconnects(to_remove, join_size, R0_map_connected), f'An error occurred. The ' \
@@ -228,8 +272,13 @@ def fragmentation_iteration(alpha_steps:list, R0_map:np.ndarray, cluster_targets
                                                                              f'patches did not fragment the ' \
                                                                              f'largest-cluster as expected.'
 
-    R0_map[np.where(to_remove)] = 0  # take away critically-connecting patches
-    return R0_map, to_remove
+    # find cluster-targets for next iteration
+    cluster_targets = update_cluster_targets(R0_map=R0_map, R0_connected=R0_map_connected, patches=to_remove,
+                                             alpha=alpha_steps[alpha_index])
+
+    plt.title('R0 fragmented - new cluster targets')
+    plot_R0_clusters(R0_map=cluster_targets)
+    return to_remove, cluster_targets
 
 def alpha_stepping_method(alpha_steps:list, R0_map:np.ndarray):
     """
@@ -240,16 +289,26 @@ def alpha_stepping_method(alpha_steps:list, R0_map:np.ndarray):
     fragmentation_process = True
     iteration = 0
     critical_joins = np.zeros_like(R0_map)
-    cluster_target = None  # target a given cluster for each iteration
+    cluster_targets = None  # target a given cluster for each iteration
     while fragmentation_process:
+        print(f'iteration {iteration} |')
         largest_cluster_size_vs_alpha = find_cluster_size_vs_alpha(alpha_steps, R0_map)  # get cluster size-vs-alpha
+        plot_cluster_size_vs_alpha(iteration, alpha_steps, largest_cluster_size_vs_alpha)
         # Find index to begin fragmenting cluster.
-        discontinuity_index, cluster_target = discontinuity_detect(largest_cluster_size_vs_alpha, R0_map, alpha_steps,
-                                                                   cluster_target)
-        if not iteration:
-            alpha_ = alpha_steps[discontinuity_index]
+        discontinuity_index, cluster_targets = discontinuity_detect(largest_cluster_size_vs_alpha, R0_map, alpha_steps,
+                                                                    cluster_targets)
 
-        if iteration and alpha_steps[discontinuity_index] > alpha_:
+        if discontinuity_index is None and cluster_targets is None:
+            sys.exit('break')
+
+        # plot_cluster_size_vs_alpha(iteration, alpha_steps, largest_cluster_size_vs_alpha,
+        #                            discontinuity_index=discontinuity_index)
+
+        if not iteration:
+            alpha = alpha_steps[discontinuity_index]
+
+        if iteration and alpha_steps[discontinuity_index] > alpha:
+            sys.exit('alpha increased')
             # Alpha should monotonically decrease over one iteration.
             try:
                 # If no cluster-joins detected, an assertion error will be raised. Otherwise, the R0-map will be updated
@@ -259,14 +318,20 @@ def alpha_stepping_method(alpha_steps:list, R0_map:np.ndarray):
                 # No cluster joins were found on the final step.
                 return R0_map
 
-        plot_cluster_size_vs_alpha(iteration, alpha_steps, largest_cluster_size_vs_alpha, discontinuity_index)
-        R0_map, patches_to_remove = fragmentation_iteration(alpha_steps, R0_map, cluster_target,
-                                                            alpha_index=discontinuity_index)
+
+        patches_to_remove, cluster_targets = fragmentation_iteration(alpha_steps, R0_map, cluster_targets,
+                                                                     alpha_index=discontinuity_index)
+
+        # Remove critically-connecting patches for this iteration.
+        R0_map = R0_map * np.logical_not(patches_to_remove)
         critical_joins += patches_to_remove
 
-        print(f'iteration {iteration} | alpha {alpha_}')
-        alpha_ = alpha_steps[discontinuity_index]
+        alpha = alpha_steps[discontinuity_index]
         iteration += 1
+
+        print(f'alpha = {alpha}')
+        plt.title(f'critical joins, alpha {alpha} iteration {iteration}')
+        plot_R0_clusters(critical_joins)
 
         if iteration > 20:
             sys.exit('Iterations exceeded expected')

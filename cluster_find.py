@@ -1,14 +1,7 @@
 import numpy as np
 from scipy.ndimage import label
 from typing import Union, Tuple
-
-CONNECTIVITY_ELEMENT1  = np.ones(shape=[3,3]) # defined nearest neighbourhood of land patches.
-CONNECTIVITY_ELEMENT2  = np.ones(shape=[3,3])
-CONNECTIVITY_ELEMENT2[(0, 0, 2, 2), (0, 2, 0, 2)] = 0 # defined nearest neighbourhood of land patches.
-CONNECTIVITY_ELEMENTS = {'MOORE': CONNECTIVITY_ELEMENT1,
-                         'VON-N': CONNECTIVITY_ELEMENT2}
-CONNECTIVITY_ELEMENT = CONNECTIVITY_ELEMENTS['MOORE']
-
+from run_main import STRUCTURING_ELEMENT
 
 def get_top_cluster_sizes(R0_map:np.ndarray, get_top_n: Union[list, int], na=False) -> list:
     """
@@ -17,11 +10,16 @@ def get_top_cluster_sizes(R0_map:np.ndarray, get_top_n: Union[list, int], na=Fal
     R0_clusters = label_connected(R0_map)[0]
     cluster_sizes, cluster_ids = cluster_freq_count(labeled=R0_clusters)
     R0_clusters = R0_clusters * np.isin(R0_clusters, cluster_ids[:get_top_n])  # select top n clusters
-    return R0_clusters, cluster_sizes[:get_top_n], cluster_ids[:get_top_n]
+    R0_clusters_ = np.zeros_like(R0_clusters)
+    for rank, id in enumerate(cluster_ids[:get_top_n]):
+        R0_clusters_[np.where(R0_clusters == id)] = rank + 1
+        cluster_ids[rank] = rank+1
+
+    return R0_clusters_, cluster_sizes[:get_top_n], cluster_ids[:get_top_n]
 
 
 def label_connected(R0_map:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    labeled, num_comp = label(R0_map, CONNECTIVITY_ELEMENT)
+    labeled, num_comp = label(R0_map, STRUCTURING_ELEMENT)
     return labeled, num_comp
 
 def cluster_freq_count(labeled:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:

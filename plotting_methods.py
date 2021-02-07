@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from typing import Union
 from run_main import PATH_TO_DATA_STORE
+from cluster_find import get_top_cluster_sizes
+from matplotlib.colors import LinearSegmentedColormap
 
 
 pltParams = {'figure.figsize': (7.5, 5.5),
@@ -50,6 +53,55 @@ def plot_top_cluster_sizes_vs_beta(ensemble_name):
     plt.legend()
     plt.show()
     return
+
+
+def plot_cluster_size_vs_alpha(iteration:int, alpha_steps:Union[list, np.ndarray],
+                               largest_cluster_size_vs_alpha: np.ndarray,
+                               discontinuity_index:int):
+    """
+    Plot cluster sizes for one iteration and one value of alpha.
+    """
+    plt.title(f'cluster sizes & index | iteration {iteration}')
+    plt.plot(alpha_steps, largest_cluster_size_vs_alpha)
+    plt.scatter(alpha_steps, largest_cluster_size_vs_alpha)
+    plt.plot([alpha_steps[discontinuity_index - 1], alpha_steps[discontinuity_index - 1]],
+             [0, largest_cluster_size_vs_alpha[discontinuity_index - 1]])
+    plt.show()
+    return
+
+
+def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None):
+    """
+    Rank and plot clusters
+    """
+    if rank is not None and isinstance(rank, int):
+        R0_map_background = np.array(R0_map > 0).astype(int)
+        R0_map = get_top_cluster_sizes(R0_map, get_top_n=rank)[0]
+        assert len(np.unique(R0_map)) - 1 == rank, f'expected len {rank}, got {len(np.unique(R0_map)) - 1}'
+        R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background
+
+    cluster_number = len(np.unique(R0_map)) - 1
+    colors = [f'C{i}' for i in range(len(np.unique(R0_map)) - 1)]
+
+    if rank is not None and isinstance(rank, int):  # Plot back-ground as grey
+        R0_map = R0_map + R0_map_background
+        colors.insert(0, 'lightgrey')
+        colors.insert(1, 'white')
+        nbins = cluster_number+2
+    else:
+        colors.insert(0, 'white')
+        nbins = cluster_number+1
+
+    cmap_name = 'my_list'
+    cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
+    im = plt.imshow(R0_map, cmap=cm)
+    plt.colorbar(im)
+    plt.show()
+    return
+
+
+
+
 
 
 if __name__ == '__main__':

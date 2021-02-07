@@ -1,12 +1,13 @@
 """
-High level, and general, functions for orchestrating methods related to cluster-finding, domain processing
+High level functions that orchestrate methods related to cluster-finding, domain processing
 and map fragmentation.
 """
 import numpy as np
 from typing import Union
 import datetime
 import matplotlib.pyplot as plt
-from cluster_find import Cluster_sturct
+from cluster_find import Cluster_sturct, get_top_cluster_sizes
+from plotting_methods import plot_R0_clusters
 from run_main import Ensemble_info
 from domain_methods import coarse_grain, get_R0_gradient_fitting
 from fragmentation_methods import get_alpha_steps, alpha_stepping_method
@@ -60,11 +61,20 @@ def fragment_R0_map(alpha_steps: Union[list, float, int, str],
     """
     Iteratively fragment the largest cluster in the R0_map via targeted tree felling algorithm
     i.e. the `alpha-stepping' method. Save felled patches to file. Return fragmented domain.
+    :rtype: object
     """
+
     time = datetime.datetime.now()
     R0_map = np.where(R0_map_raw > 1, R0_map_raw, 0)  # consider above threshold positions
+    R0_map = R0_map * np.array(get_top_cluster_sizes(R0_map, get_top_n=1)[0] > 0).astype(int)  # concentrate on the largest cluster
+    R0_indices = np.where(R0_map)
+    R0_indices = [min(R0_indices[0]), max(R0_indices[0]), min(R0_indices[1]), max(R0_indices[1])]
+    R0_map = R0_map[R0_indices[0]:R0_indices[1], R0_indices[2]: R0_indices[3]]  # trim domain
     alpha_steps = get_alpha_steps(alpha_steps, R0_max=R0_map.max(), R0_min=1)
-    alpha_stepping_method(alpha_steps, R0_map, find_criticals=True)
+    # Todo, code in iterations....
+    R0_map = alpha_stepping_method(alpha_steps, R0_map)
+    plot_R0_clusters(R0_map=R0_map)
+
     print(f'1 time elapsed:  {datetime.datetime.now() - time}')
     return
 

@@ -2,11 +2,13 @@ import os
 import numpy as np
 
 PATH_TO_DATA_STORE = f'{os.getcwd()}/data_store'
+
 STRUCTURING_ELEMENT1  = np.ones(shape=[3,3]) # defined nearest neighbourhood of land patches.
 STRUCTURING_ELEMENT2  = np.ones(shape=[3,3])
 STRUCTURING_ELEMENT2[(0, 0, 2, 2), (0, 2, 0, 2)] = 0 # defined nearest neighbourhood of land patches.
 STRUCTURING_ELEMENTS = {'MOORE': STRUCTURING_ELEMENT1,
                          'VON-N': STRUCTURING_ELEMENT2}
+
 STRUCTURING_ELEMENT = STRUCTURING_ELEMENTS['MOORE']
 
 
@@ -27,9 +29,9 @@ class Ensemble_info():   # High level struct, holds all ensemble info
 def orchestrate_main(ensemble_name):  # import & run delegator methods
     from delegator_methods import get_single_R0_cluster_map, fragment_R0_map
     alpha_steps = 'auto'
-    coarse_grain_factor = 1
-    iterations = 2
-    beta_index = 1
+    coarse_grain_factor = 5
+    iterations = 1
+    beta_index = 2
 
     R0_out = get_single_R0_cluster_map(ensemble_name=ensemble_name, coarse_grain_factor=coarse_grain_factor,
                                        beta_index=beta_index)

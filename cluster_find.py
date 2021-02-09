@@ -3,7 +3,7 @@ from scipy.ndimage import label
 from typing import Union, Tuple, List
 from run_main import STRUCTURING_ELEMENT
 
-def get_top_cluster_sizes(R0_map:np.ndarray, get_top_n: Union[list, int], na=False) -> Tuple[np.ndarray, List, List]:
+def get_top_cluster_sizes(R0_map:np.ndarray, get_top_n: Union[list, int]) -> Tuple[np.ndarray, List, List]:
     """
     Find connected clusters and return rank-ordered size along with corresponding  id
     """

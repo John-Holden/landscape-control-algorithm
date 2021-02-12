@@ -1,21 +1,38 @@
 import numpy as np
+import sys
 from scipy.ndimage import label
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Iterable
+
 from run_main import STRUCTURING_ELEMENT
 
-def get_top_cluster_sizes(R0_map:np.ndarray, get_top_n: Union[list, int]) -> Tuple[np.ndarray, List, List]:
+def rank_cluster_map(R0_map:np.ndarray, get_ranks: Union[int, Iterable]) -> Tuple[np.ndarray, List, List]:
     """
-    Find connected clusters and return rank-ordered size along with corresponding  id
+    Find connected clusters and return rank-ordered size along with corresponding  id.
+    If get ranks is an int, the rank upto and included the value `get_ranks' is returned.
+    If a tuple is supplied, just those ranks will be returned.
     """
+
     R0_clusters = label_connected(R0_map)[0]
     cluster_sizes, cluster_ids = cluster_freq_count(labeled=R0_clusters)
-    R0_clusters = R0_clusters * np.isin(R0_clusters, cluster_ids[:get_top_n])  # select top n clusters
-    R0_clusters_ = np.zeros_like(R0_clusters)
-    for rank, id in enumerate(cluster_ids[:get_top_n]):
-        R0_clusters_[np.where(R0_clusters == id)] = rank + 1
-        cluster_ids[rank] = rank+1
 
-    return R0_clusters_, cluster_sizes[:get_top_n], cluster_ids[:get_top_n]
+    if isinstance(get_ranks, int):
+        cluster_ids = cluster_ids[:get_ranks]
+        cluster_sizes = cluster_sizes[:get_ranks]
+
+    else:
+        try:
+            cluster_ids = [cluster_ids[rank-1] for rank in get_ranks]
+            cluster_sizes = [cluster_sizes[rank-1] for rank in get_ranks]
+        except Exception:
+            sys.exit(f'Error type {type(get_ranks)} is not iterable')
+
+    R0_clusters_ = np.zeros_like(R0_clusters)
+    R0_clusters = R0_clusters * np.isin(R0_clusters, cluster_ids)  # select top n clusters
+    for rank, id in enumerate(cluster_ids):
+        R0_clusters_[np.where(R0_clusters == id)] = rank + 1
+        cluster_ids[rank] = rank + 1
+
+    return R0_clusters_, cluster_sizes, cluster_ids
 
 
 def label_connected(R0_map:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:

@@ -1,14 +1,14 @@
 """
 Methods related to fragmenting a domain of R0 values.
 """
-
+import sys
 import numpy as np
 from typing import Union, Tuple, List
 from scipy.ndimage.morphology import binary_dilation
 import matplotlib.pyplot as plt
-from collections import defaultdict
+import itertools
 from plotting_methods import plot_cluster_size_vs_alpha, plot_R0_clusters
-from cluster_find import get_top_cluster_sizes, label_connected, cluster_freq_count
+from cluster_find import rank_cluster_map, label_connected, cluster_freq_count
 from run_main import STRUCTURING_ELEMENT
 
 TEST_TOP_N = 5  # Test the top N clusters connect to from R0-connected
@@ -67,11 +67,6 @@ def test_removal_disconnects(to_remove:List, R0_map_connected:np.ndarray) -> boo
     R0_fragmented, number_comp = label_connected(R0_map=R0_fragmented)
     connected_comp = np.unique(R0_map_connected)
     if number_comp >= 2:
-        # plot_R0_clusters(R0_fragmented)
-        if len(np.where(R0_map_connected)[0]) < 1.1 * len(np.where(R0_fragmented == 1)[0]):
-            plot_R0_clusters(R0_fragmented)
-            raise AssertionError
-
         assert len(connected_comp) == 2, f'Error, expected two elements [0, 1] in R0-connected. Found {connected_comp}'
         assert connected_comp[1] == 1, f'Error, expected R0-connected to have value 1, found {connected_comp[1]}'
         return True
@@ -191,12 +186,12 @@ def fragmentation_iteration(alpha_steps:list, R0_map:np.ndarray, cluster_targets
     # find clusters pre connected cluster state
     R0_map_disconnected = np.where(R0_map > alpha_steps[alpha_index], R0_map, 0)
     # assume top n sub-clusters in pre-connected
-    R0_map_disconnected, cluster_sizes, cluster_ids  = get_top_cluster_sizes(R0_map=R0_map_disconnected, get_top_n=10)
+    R0_map_disconnected, cluster_sizes, cluster_ids  = rank_cluster_map(R0_map=R0_map_disconnected, get_ranks=10)
 
     # find clusters post connected cluster state
     R0_map_connected = np.where(R0_map > alpha_steps[alpha_index+1], R0_map, 0)
     # assume connected cluster is largest-ranked
-    R0_map_connected = get_top_cluster_sizes(R0_map=R0_map_connected, get_top_n=1)[0]
+    R0_map_connected = rank_cluster_map(R0_map=R0_map_connected, get_ranks=1)[0]
 
     if cluster_targets is None:  # Set the cluster targets on the first iteration.
         cluster_targets = np.where(R0_map_disconnected == cluster_ids[0], cluster_ids[0], 0)
@@ -217,70 +212,36 @@ def fragmentation_iteration(alpha_steps:list, R0_map:np.ndarray, cluster_targets
     return to_remove, cluster_targets
 
 
-def find_alpha_discontinuity(alpha_steps, R0_map, join_history=False):
+def find_alpha_discontinuities(alpha_steps, R0_map, join_history=False):
     """
     Find how the maximum-cluster size changes over the alpha-thresholding procedure. Return cluster-size vs alpha.
     """
-    if join_history:
-        cluster_joins_history = defaultdict(list)
-    max_join_ratio = 0
-    optimal_index = None
+
+    joins_at_alpha = {}
     for index in range(len(alpha_steps)-1):
         R0_map_alpha = np.where(R0_map > alpha_steps[index], R0_map, 0)
-        R0_map_alpha, cluster_sizes, cluster_ids = get_top_cluster_sizes(R0_map=R0_map_alpha, get_top_n=5)
+        R0_map_alpha, cluster_sizes, cluster_ids = rank_cluster_map(R0_map=R0_map_alpha, get_ranks=5)
         R0_map_d_alpha = np.where(R0_map > alpha_steps[index+1], R0_map, 0)
-        R0_map_d_alpha, d_cluster_sizes = get_top_cluster_sizes(R0_map=R0_map_d_alpha, get_top_n=1)[:2]
+        R0_map_d_alpha, d_cluster_sizes = rank_cluster_map(R0_map=R0_map_d_alpha, get_ranks=1)[:2]
         cluster_joins = np.unique(R0_map_alpha[np.where(R0_map_d_alpha)])
-        same_dominant_cluster = True if 1 in cluster_joins else False
-        cluster_joins = [rank for rank in cluster_joins if rank not in [0, 1]]
+        cluster_joins = [rank for rank in cluster_joins if rank not in [0]]
 
-        if len(cluster_joins) == 0:
+        if len(cluster_joins) == 1:
             continue
+        targets = [comb for comb in itertools.combinations(cluster_joins, 2) if 1 in comb]
+        cluster_size_ratios = [cluster_sizes[comb[1]-1]/cluster_sizes[comb[0]-1] for comb in targets]
+        joins_at_alpha[index]= { 'cluster_targets': targets,
+                                 f'ratios' : cluster_size_ratios}
 
-        if not same_dominant_cluster:
-            plot_R0_clusters(R0_map_alpha)
-            plot_R0_clusters(R0_map_d_alpha)
-            raise AssertionError
-
-        for sub_cluster in cluster_joins:
-            join_ratio = cluster_sizes[sub_cluster - 1] / cluster_sizes[0]
-            if  join_ratio > max_join_ratio:
-                max_join_ratio = join_ratio
-                optimal_index = index
-                cluster_join = sub_cluster
-
-            if join_history:  # for de-bugging
-                info = {
-                        f'C1_C{sub_cluster}': cluster_sizes[sub_cluster - 1] / cluster_sizes[0],
-                        f'C_{sub_cluster}_size' : cluster_sizes[sub_cluster - 1],
-                        f'C_1_size' : cluster_sizes[0],
-                        'alpha_step' : ' -> '.join([str(alpha_steps[index]), str(alpha_steps[index])])
-                        }
-                cluster_joins_history[index].append(info)
-
-    if join_history:
-        for alpha_index, join_info in cluster_joins_history.items():
-            print(f'alpha index = {alpha_index}')
-            print(join_info, '\n')
-
-    assert optimal_index, f'Error, optimal joins found {optimal_index}'
-
-    cluster_targets = R0_map > alpha_steps[optimal_index]
-    cluster_targets = get_top_cluster_sizes(R0_map=cluster_targets, get_top_n=cluster_join)[0]
-    cluster_targets = np.where(cluster_targets == 1, 1, 0) + np.where(cluster_targets == cluster_join, 2, 0)
-
-    assert assert_discontinuity_in_step(alpha_steps[optimal_index], alpha_steps[optimal_index+1], R0_map,
-                                        cluster_targets)
-
-    return optimal_index, cluster_targets
+    return joins_at_alpha
 
 
 def assert_discontinuity_in_step(alpha:float, d_alpha:float, R0_map:np.ndarray, cluster_targets:np.ndarray) -> bool:
     """
     Test whether or not clusters-join for the alpha step: alpha ->
     """
-    alpha_sizes = get_top_cluster_sizes(R0_map > alpha, get_top_n=1)[1]
-    R0_d_alpha, d_alpha_sizes = get_top_cluster_sizes(R0_map > d_alpha, get_top_n=1)[:2]
+    alpha_sizes = rank_cluster_map(R0_map > alpha, get_ranks=1)[1]
+    R0_d_alpha, d_alpha_sizes = rank_cluster_map(R0_map > d_alpha, get_ranks=1)[:2]
     joins = np.unique(cluster_targets[np.where(R0_d_alpha)])
     targets_in_d_alpha = True if 1 in joins and 2 in joins else False
     signif_rise = True if d_alpha_sizes[0] > 1.1 * alpha_sizes[0] else False
@@ -294,7 +255,7 @@ def update_targets(cluster_targets:np.ndarray, R0_map:np.ndarray, d_alpha:float)
     """
     For each alpha-step, update the cluster-targets which monotonically increase.
     """
-    R0_d_alpha = get_top_cluster_sizes(R0_map > d_alpha, get_top_n=10)[0]
+    R0_d_alpha = rank_cluster_map(R0_map > d_alpha, get_ranks=10)[0]
     cluster_1 = np.unique(R0_d_alpha[np.where(cluster_targets == 1)])
     cluster_2 = np.unique(R0_d_alpha[np.where(cluster_targets == 2)])
     assert len(cluster_1) == 1, f'Error, expect target 1 to consist of one element. Found {cluster_1}'
@@ -303,24 +264,63 @@ def update_targets(cluster_targets:np.ndarray, R0_map:np.ndarray, d_alpha:float)
     return np.where(R0_d_alpha == cluster_1[0], 1, 0) + np.where(R0_d_alpha == cluster_2, 2, 0)
 
 
-def alpha_stepping_method(alpha_steps:list, R0_map:np.ndarray) -> np.ndarray:
+def get_payoff(patches:np.ndarray, R0_map:np.ndarray) -> float:
+    """
+    Find the payoff, defined as the second largest fragment dived by the number of patches to fragment.
+    """
+    target_sizes = rank_cluster_map(R0_map, get_ranks=2)[1]
+    return target_sizes[1] / len(patches[0])
+
+
+def find_best(frag_method):
+    """
+    Find best fragmentation - iterate over different alpha-valued initial conditions
+    """
+    def iterator(R0_map):
+        alpha_steps = get_alpha_steps('auto', R0_max=5, R0_min=0.99, number_of_steps=30)
+        join_history = find_alpha_discontinuities(alpha_steps, R0_map)
+        c = 0
+        best_payoff = 0
+        for alpha_index, join_info in join_history.items():
+            alpha_steps_ = alpha_steps[alpha_index:]
+            for cluster_join, size_ratio in zip(join_info['cluster_targets'], join_info['ratios']):
+                if size_ratio < 0.10:
+                    continue  # negate small joins
+
+                cluster_targets = rank_cluster_map(R0_map > alpha_steps_[0], get_ranks=cluster_join)[0]
+                connecting_patches_indices, R0_map_fragmented = frag_method(R0_map, cluster_targets, alpha_steps_)
+                payoff = get_payoff(connecting_patches_indices, R0_map_fragmented)
+
+                if payoff > best_payoff:
+                    best_payoff = payoff
+                    optimal_fragmentation = R0_map_fragmented
+                    optimal_indices = connecting_patches_indices
+
+                c+=1
+
+        return optimal_indices, optimal_fragmentation
+
+    return iterator
+
+
+@find_best
+def alpha_stepping_method(R0_map:np.ndarray, cluster_targets:np.ndarray=None,  alpha_steps:list = None) -> np.ndarray:
     """
     Perform the /alpha-stepping method over the R0-map in order to find critically-connecting patches.
     """
     critical_joins = np.zeros_like(R0_map)
-    init_alpha_index, cluster_targets = find_alpha_discontinuity(alpha_steps, R0_map)
-    alpha_indices = range(init_alpha_index, len(alpha_steps)-1)
-    for iteration, alpha_index in enumerate(alpha_indices):
-        print(f'alpha step  {alpha_steps[alpha_index]} -> {alpha_steps[alpha_index+1]}')
-        if iteration and not assert_discontinuity_in_step(alpha_steps[alpha_index], alpha_steps[alpha_index+1],
-                                                          R0_map, cluster_targets, ):
+    for alpha_index in range(len(alpha_steps) - 1):
+        # Iterate through alpha index until alpha = 0.99
+        if not assert_discontinuity_in_step(alpha_steps[alpha_index], alpha_steps[alpha_index+1],
+                                                          R0_map, cluster_targets):
+
+            if not alpha_index:
+                sys.exit('Error, on the first iteration, expected a discontinuity')
 
             cluster_targets = update_targets(cluster_targets, R0_map, alpha_steps[alpha_index+1])
             continue
 
-        # plot_cluster_size_vs_alpha(iteration, alpha_steps, cluster_size_v_alpha, discontinuity_index=discontinuity_index)
         patches_to_remove, cluster_targets = fragmentation_iteration(alpha_steps, R0_map, cluster_targets, alpha_index)
-
 
         R0_map = R0_map * np.logical_not(patches_to_remove)
         critical_joins += patches_to_remove
@@ -330,12 +330,15 @@ def alpha_stepping_method(alpha_steps:list, R0_map:np.ndarray) -> np.ndarray:
     return critical_joins, R0_map
 
 
-def update_fragmentation_target(R0_map:np.ndarray, crit_indices:tuple) -> np.ndarray:
+
+
+
+def update_fragmentation_target(R0_map:np.ndarray, patch_indices:tuple) -> np.ndarray:
     """
     Chose the largest cluster in the fragmented domain.
     """
-    R0_map[crit_indices] = 0
-    return get_top_cluster_sizes(R0_map, get_top_n=1)[0]
+    R0_map[patch_indices] = 0
+    return rank_cluster_map(R0_map, get_ranks=1)[0]
 
 
 def scenario_test():

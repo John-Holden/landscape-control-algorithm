@@ -8,7 +8,7 @@ from typing import Union
 import matplotlib.pyplot as plt
 from run_main import Ensemble_info
 from plotting_methods import plot_R0_clusters
-from cluster_find import Cluster_sturct, get_top_cluster_sizes
+from cluster_find import Cluster_sturct, rank_cluster_map
 from domain_methods import coarse_grain, get_R0_gradient_fitting
 from fragmentation_methods import get_alpha_steps, alpha_stepping_method, update_fragmentation_target
 
@@ -66,18 +66,20 @@ def fragment_R0_map(alpha_steps: Union[list, float, int, str],
 
     connecting_patches = {}
     R0_map = np.where(R0_map_raw > 1, R0_map_raw, 0)  # consider above threshold positions
-    R0_map = R0_map * np.array(get_top_cluster_sizes(R0_map, get_top_n=1)[0] > 0).astype(int)  # concentrate on the largest cluster
+    R0_map = R0_map * np.array(rank_cluster_map(R0_map, get_ranks=1)[0] > 0).astype(int)  # concentrate on the largest cluster
     R0_indices = np.where(R0_map)
     R0_indices = [min(R0_indices[0]), max(R0_indices[0]), min(R0_indices[1]), max(R0_indices[1])]
     R0_map = R0_map[R0_indices[0]:R0_indices[1], R0_indices[2]: R0_indices[3]]  # trim domain
     R0_target = np.copy(R0_map)
     time = datetime.datetime.now()
-    alpha_max = [3, 3, 4, 4, 4, 5, 5, 5, 5, 5]
     for iteration in range(fragmentation_iterations):
-        alpha_steps = get_alpha_steps(alpha_steps, R0_max=alpha_max[iteration], R0_min=0.99, number_of_steps=30)
-        connecting_patch_indices, R0_target_fragmented = alpha_stepping_method(alpha_steps, R0_target)
+        connecting_patch_indices, R0_target_fragmented = alpha_stepping_method(R0_target)
         connecting_patches[iteration] = [connecting_patch_indices[0], connecting_patch_indices[1]]
+        plt.title('fragmented...')
         plot_R0_clusters(R0_map=R0_target_fragmented, rank=2)
+        plt.title('R0')
+        # todo fix R0 having value 1 ?
+        plot_R0_clusters(R0_map, rank=1)
         R0_target = update_fragmentation_target(R0_map, connecting_patch_indices)
         R0_target = R0_target * R0_map
 

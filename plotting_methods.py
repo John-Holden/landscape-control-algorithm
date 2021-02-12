@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Union
+from typing import Union, Iterable
 from run_main import PATH_TO_DATA_STORE
-from cluster_find import get_top_cluster_sizes
+from cluster_find import rank_cluster_map
 from matplotlib.colors import LinearSegmentedColormap
 
 
@@ -77,7 +77,7 @@ def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None):
     """
     if rank is not None and isinstance(rank, int):
         R0_map_background = np.array(R0_map > 0).astype(int)
-        R0_map = get_top_cluster_sizes(R0_map, get_top_n=rank)[0]
+        R0_map = rank_cluster_map(R0_map, get_ranks=rank)[0]
         assert len(np.unique(R0_map)) - 1 == rank, f'expected len {rank}, got {len(np.unique(R0_map)) - 1}'
         R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background
 

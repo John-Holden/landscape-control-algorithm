@@ -2,12 +2,11 @@
 Methods related to fragmenting a domain of R0 values.
 """
 import sys
-import numpy as np
-from typing import Union, Tuple, List, Callable
-from scipy.ndimage.morphology import binary_dilation
-import matplotlib.pyplot as plt
 import itertools
-from plotting_methods import plot_cluster_size_vs_alpha, plot_R0_clusters
+import numpy as np
+from typing import Union, Tuple, Callable
+from scipy.ndimage.morphology import binary_dilation
+
 from cluster_find import rank_cluster_map, label_connected, cluster_freq_count
 from run_main import STRUCTURING_ELEMENT
 
@@ -15,6 +14,8 @@ TEST_TOP_N = 5  # Test the top N clusters connect to from R0-connected
 INTERFACE_MARGIN = 5
 MIN_CLUSTER_INTERMEDIATE_SIZE = 2
 TARGETS_C1_C2 = [1, 2]
+MIN_CLUSTER_JOIN_SIZE = 5
+MIN_CLUSTER_JOIN_RATIO = 0.10
 
 
 def get_alpha_steps(alpha_steps: Union[iter, float, int, str], R0_min:float, R0_max:float,
@@ -175,14 +176,6 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
         # The patches found from intermediate cluster-join edges, & the interface, fragmented teh cluster.
         return connecting_patches
 
-    plt.title(f'Targets')
-    plot_R0_clusters(R0_map=cluster_targets)
-
-    plt.title(f'R0 disconnected')
-    plot_R0_clusters(R0_map=R0_pre_connect)
-
-    plt.title(f'R0 connected ')
-    plot_R0_clusters(R0_map=R0_post_connect)
 
     assert cluster_edge_remove_num + interface_remove_num, f'Error found 0 patches to remove.'
     sys.exit('Error, cluster did not fragment.')
@@ -205,13 +198,17 @@ def find_alpha_discontinuities(alpha_steps, R0_map):
         cluster_joins = np.unique(R0_map_alpha[np.where(R0_map_d_alpha)])
         cluster_joins = [rank for rank in cluster_joins if rank not in [0]]
 
-        if len(cluster_joins) <= 1:
+        if len(cluster_joins) <= 1 or 1 not in cluster_joins:
             continue
 
-        # find list of cluster-joins and their, sizes and respective ratios, CN / CM
+        sizes = [cluster_sizes[rank - 1] for rank in cluster_joins]
         targets = [comb for comb in itertools.combinations(cluster_joins, 2) if 1 in comb]
-        sizes = [cluster_sizes[rank-1] for rank in cluster_joins]
-        cluster_size_ratios = [cluster_sizes[comb[1]-1]/cluster_sizes[comb[0]-1] for comb in targets]
+        cluster_size_ratios = [cluster_sizes[comb[1] - 1] / cluster_sizes[comb[0] - 1] for comb in targets]
+
+        if max(sizes) < MIN_CLUSTER_JOIN_SIZE or max(cluster_size_ratios) < MIN_CLUSTER_JOIN_RATIO:
+            # skip small cluster-sizes or insignificant joins
+            continue
+
         joins_at_alpha[index] = {'cluster_targets': targets,
                                 'sizes': sizes,
                                  f'ratios' : cluster_size_ratios}
@@ -249,16 +246,8 @@ def update_targets(cluster_targets:np.ndarray, R0_d_alpha:np.ndarray) -> np.ndar
         # The addition of extra patches in the step are added to the targets, and the values 1,2, preserved.
         return np.where(R0_d_alpha == cluster_1[0], 1, 0) + np.where(R0_d_alpha == cluster_2, 2, 0)
 
-    plt.title(f'map at d_alpha non ranked')
-    plot_R0_clusters(R0_d_alpha)
-
-    plt.title(f'map at d_alpha ranked')
-    plot_R0_clusters(R0_d_alpha, rank=2)
-
-    plt.title('cluster targets')
-    plot_R0_clusters(cluster_targets)
-    print(f'Error, expect target 1 to consist of one element. Found {cluster_1}')
-    print(f'Error, expect target 2 to consist of one element. Found {cluster_2}')
+    print(f'C1 found in ranks, {cluster_1}, of R0 + d_alpha |')
+    print(f'C2 found in ranks, {cluster_2}, of R0 + d_alpha |')
     raise AssertionError
 
 
@@ -293,17 +282,13 @@ def find_best(frag_method: Callable) -> Callable:
     Find best fragmentation - iterate over different alpha-valued initial conditions
     """
     def iterator(R0_map: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        alpha_steps = get_alpha_steps('auto', R0_max=5, R0_min=0.99, number_of_steps=30)
+        alpha_steps = get_alpha_steps('auto', R0_max=7, R0_min=0.99, number_of_steps=30)
         join_history = find_alpha_discontinuities(alpha_steps, R0_map)
-        best_payoff, iteration = 0, 0
+        best_payoff, iteration, optimal_indices = 0, 0, None
         for alpha_index, join_info in join_history.items():
             alpha_steps_ = alpha_steps[alpha_index:]
-            for cluster_join, join_ratio, sizes in zip(join_info['cluster_targets'], join_info['ratios'],
-                                                       join_info['sizes']):
 
-                if join_ratio < 0.10 or max(sizes) < 25:
-                    continue  # negate small joins and small cluster sizes
-
+            for cluster_join, join_ratio in zip(join_info['cluster_targets'], join_info['ratios']):
                 # set cluster targets for the iteration
                 cluster_targets = rank_cluster_map(R0_map > alpha_steps_[0], get_ranks=cluster_join)[0]
                 cluster_targets = set_cluster_targets(cluster_targets, cluster_join)
@@ -317,6 +302,9 @@ def find_best(frag_method: Callable) -> Callable:
                     optimal_indices = connecting_patches_indices
 
                 iteration+=1
+
+        if optimal_indices is None:
+            raise NotImplemented
 
         return optimal_indices, optimal_fragmentation
 

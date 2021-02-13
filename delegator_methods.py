@@ -80,9 +80,6 @@ def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int) -> np.
         R0_target = update_fragmentation_target(R0_map, connecting_patch_indices)
         R0_target = R0_target * R0_map
 
-        plot_R0_clusters(R0_target)
-
-
     plot_fragmented_domain(connecting_patches, R0_map)
     print(f'Time taken to fragment {fragmentation_iterations} iterations: {datetime.datetime.now() - time}')
     return

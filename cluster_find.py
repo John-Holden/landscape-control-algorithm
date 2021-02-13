@@ -5,7 +5,7 @@ from typing import Union, Tuple, List, Iterable
 
 from run_main import STRUCTURING_ELEMENT
 
-def rank_cluster_map(R0_map:np.ndarray, get_ranks: Union[int, Iterable]) -> Tuple[np.ndarray, List, List]:
+def rank_cluster_map(R0_map:np.ndarray, get_ranks: Union[None, int, Iterable] = None) -> Tuple[np.ndarray, List, List]:
     """
     Find connected clusters and return rank-ordered size along with corresponding  id.
     If get ranks is an int, the rank upto and included the value `get_ranks' is returned.
@@ -15,22 +15,26 @@ def rank_cluster_map(R0_map:np.ndarray, get_ranks: Union[int, Iterable]) -> Tupl
     R0_clusters = label_connected(R0_map)[0]
     cluster_sizes, cluster_ids = cluster_freq_count(labeled=R0_clusters)
 
-    if isinstance(get_ranks, int):
-        cluster_ids = cluster_ids[:get_ranks]
-        cluster_sizes = cluster_sizes[:get_ranks]
-
+    if get_ranks is None:
+        ranks = range(1, len(cluster_ids)+1)
     else:
-        try:
-            cluster_ids = [cluster_ids[rank-1] for rank in get_ranks]
-            cluster_sizes = [cluster_sizes[rank-1] for rank in get_ranks]
-        except Exception:
-            sys.exit(f'Error type {type(get_ranks)} is not iterable')
+        if isinstance(get_ranks, int):
+            cluster_ids = cluster_ids[:get_ranks]
+            cluster_sizes = cluster_sizes[:get_ranks]
+            ranks = range(1, get_ranks+1)
+        else:
+            try:
+                cluster_ids = [cluster_ids[rank-1] for rank in get_ranks]
+                cluster_sizes = [cluster_sizes[rank-1] for rank in get_ranks]
+                ranks = get_ranks
+            except Exception:
+                sys.exit(f'Error type {type(get_ranks)} is not iterable')
 
     R0_clusters_ = np.zeros_like(R0_clusters)
     R0_clusters = R0_clusters * np.isin(R0_clusters, cluster_ids)  # select top n clusters
-    for rank, id in enumerate(cluster_ids):
-        R0_clusters_[np.where(R0_clusters == id)] = rank + 1
-        cluster_ids[rank] = rank + 1
+    for rank_index, id in enumerate(cluster_ids):
+        R0_clusters_[np.where(R0_clusters == id)] = ranks[rank_index]
+        cluster_ids[rank_index] = ranks[rank_index]
 
     return R0_clusters_, cluster_sizes, cluster_ids
 

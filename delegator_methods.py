@@ -7,10 +7,10 @@ import numpy as np
 from typing import Union
 import matplotlib.pyplot as plt
 from run_main import Ensemble_info
-from plotting_methods import plot_R0_clusters
 from cluster_find import Cluster_sturct, rank_cluster_map
 from domain_methods import coarse_grain, get_R0_gradient_fitting
-from fragmentation_methods import get_alpha_steps, alpha_stepping_method, update_fragmentation_target
+from plotting_methods import plot_R0_clusters, plot_fragmented_domain
+from fragmentation_methods import alpha_stepping_method, update_fragmentation_target
 
 
 def get_single_R0_cluster_map(ensemble_name:str, coarse_grain_factor:int, beta_index:float) -> np.ndarray:
@@ -70,19 +70,19 @@ def fragment_R0_map(alpha_steps: Union[list, float, int, str],
     R0_indices = np.where(R0_map)
     R0_indices = [min(R0_indices[0]), max(R0_indices[0]), min(R0_indices[1]), max(R0_indices[1])]
     R0_map = R0_map[R0_indices[0]:R0_indices[1], R0_indices[2]: R0_indices[3]]  # trim domain
+
     R0_target = np.copy(R0_map)
     time = datetime.datetime.now()
     for iteration in range(fragmentation_iterations):
+        print(f'iteration {iteration}')
         connecting_patch_indices, R0_target_fragmented = alpha_stepping_method(R0_target)
-        connecting_patches[iteration] = [connecting_patch_indices[0], connecting_patch_indices[1]]
-        plt.title('fragmented...')
-        plot_R0_clusters(R0_map=R0_target_fragmented, rank=2)
-        plt.title('R0')
-        # todo fix R0 having value 1 ?
-        plot_R0_clusters(R0_map, rank=1)
+        connecting_patches[iteration] = connecting_patch_indices
+
         R0_target = update_fragmentation_target(R0_map, connecting_patch_indices)
         R0_target = R0_target * R0_map
 
+
+    plot_fragmented_domain(connecting_patches, R0_map)
     print(f'Time taken to fragment {fragmentation_iterations} iterations: {datetime.datetime.now() - time}')
     return
 

@@ -101,6 +101,23 @@ def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None):
     return
 
 
+def plot_fragmented_domain(connecting_patches:dict, R0_map:np.ndarray):
+    """
+    Plot the domain after it has been fragmented
+    """
+    connecting_patch_arr = np.zeros_like(R0_map)
+    for index, indicies in connecting_patches.items():
+        R0_map[indicies] = 0
+        connecting_patch_arr[indicies] = 1
+
+    plt.imshow(connecting_patch_arr)
+    plt.show()
+
+    R0_fragmented = rank_cluster_map(R0_map)[0]
+    plot_R0_clusters(R0_fragmented)
+    return
+
+
 
 
 

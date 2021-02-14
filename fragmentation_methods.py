@@ -2,22 +2,20 @@
 Methods related to fragmenting a domain of R0 values.
 """
 import sys
+import datetime
 import itertools
-import numpy as np
+
 from typing import Union, Tuple, Callable
+
+import numpy as np
 import matplotlib.pyplot as plt
-from plotting_methods import plot_R0_clusters
 from scipy.ndimage.morphology import binary_dilation
 
+from plotting_methods import plot_R0_clusters, plot_fragmented_domain
 from cluster_find import rank_cluster_map, label_connected, cluster_freq_count
-from run_main import STRUCTURING_ELEMENT
+from parameters_and_setup import STRUCTURING_ELEMENT, TARGETS_C1_C2, MIN_CLUSTER_INTERMEDIATE_SIZE, \
+    INTERFACE_MARGIN, FRAGMENT_RANK
 
-TEST_TOP_N = 5  # Test the top N clusters connect to from R0-connected
-INTERFACE_MARGIN = 5
-MIN_CLUSTER_INTERMEDIATE_SIZE = 2
-TARGETS_C1_C2 = [1, 2]
-MIN_CLUSTER_JOIN_SIZE = 5
-MIN_CLUSTER_JOIN_RATIO = 0.10
 
 
 def get_alpha_steps(alpha_steps: Union[iter, float, int, str], R0_min:float, R0_max:float,
@@ -254,7 +252,6 @@ def get_payoff(patches:np.ndarray, R0_map:np.ndarray) -> float:
     Find the payoff, defined as the second largest fragment dived by the number of patches to fragment.
     """
     target_sizes = rank_cluster_map(R0_map)[1]
-    print('len targets: ', len(target_sizes))
 
     return target_sizes[1] / len(patches[0])
 
@@ -285,8 +282,7 @@ def find_best(frag_method: Callable) -> Callable:
         alpha_steps = get_alpha_steps('auto', R0_max=7, R0_min=0.99, number_of_steps=30)
         join_history = find_alpha_discontinuities(alpha_steps, R0_map)
         best_payoff, iteration, optimal_indices = 0, 0, None
-        plt.title('R0 in: ')
-        plot_R0_clusters(R0_map, 1)
+
         for alpha_index, join_info in join_history.items():
             alpha_steps_ = alpha_steps[alpha_index:]
 
@@ -308,8 +304,6 @@ def find_best(frag_method: Callable) -> Callable:
         if optimal_indices is None:
             raise NotImplemented
 
-        plt.title(f'best out of {iteration+1}')
-        plot_R0_clusters(rank_cluster_map(optimal_fragmentation)[0])
         return optimal_indices, optimal_fragmentation
 
     return iterator
@@ -355,8 +349,45 @@ def update_fragmentation_target(R0_map:np.ndarray, patch_indices:tuple) -> np.nd
     return rank_cluster_map(R0_map, get_ranks=1)[0]
 
 
-def scenario_test():
+def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, save_to_path:str,
+                    species:str='fex', plot:bool=False) -> dict:
     """
-    For a given epicenter, work out containment scenarios from the fragmented map. Return the payoff ratio.
+    Iteratively fragment the largest cluster in the R0_map via targeted tree felling algorithm
+    i.e. the `alpha-stepping' method. Save felled patches to file. Return fragmented domain.
+    :rtype: object
     """
-    print('testing fragmented domain for landscape-level control...')
+    if R0_map_raw.max() < 1:
+        # Trivial map
+        return None
+
+    connecting_patches = {}
+    R0_map = np.where(R0_map_raw > 1, R0_map_raw, 0)  # consider above threshold positions
+    R0_map = R0_map * np.array(rank_cluster_map(R0_map, get_ranks=FRAGMENT_RANK)[0] > 0).astype(int)  # concentrate on the largest cluster
+    R0_indices = np.where(R0_map)
+    R0_indices = [min(R0_indices[0]), max(R0_indices[0]), min(R0_indices[1]), max(R0_indices[1])]
+    R0_map = R0_map[R0_indices[0]:R0_indices[1], R0_indices[2]: R0_indices[3]]  # trim domain and save.
+    np.save(f'{save_to_path}/{species}_R0_map_rank_{FRAGMENT_RANK}_cluster', R0_map)
+    plot_R0_clusters(R0_map)
+    assert 0
+    if plot:
+        plt.title('R0-map in put:')
+        plot_R0_clusters(rank_cluster_map(R0_map)[0])
+
+    R0_target = np.copy(R0_map)
+    time = datetime.datetime.now()
+    for iteration in range(fragmentation_iterations):
+        print(f'iteration {iteration}')
+        connecting_patch_indices, R0_target_fragmented = alpha_stepping_method(R0_target)
+        connecting_patches[iteration] = connecting_patch_indices
+        R0_target = update_fragmentation_target(R0_map, connecting_patch_indices)
+        R0_target = R0_target * R0_map
+
+    if plot:
+        plt.title(f'Fragmented to {iteration+1} iterations')
+        plot_fragmented_domain(connecting_patches, R0_map)
+
+    print(f'Time taken to fragment {fragmentation_iterations} iterations: {datetime.datetime.now() - time}')
+    return connecting_patches
+
+
+

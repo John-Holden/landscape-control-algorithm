@@ -3,7 +3,7 @@ import sys
 from scipy.ndimage import label
 from typing import Union, Tuple, List, Iterable
 
-from run_main import STRUCTURING_ELEMENT
+from parameters_and_setup import STRUCTURING_ELEMENT
 
 def rank_cluster_map(R0_map:np.ndarray, get_ranks: Union[None, int, Iterable] = None) -> Tuple[np.ndarray, List, List]:
     """

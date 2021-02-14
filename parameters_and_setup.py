@@ -11,6 +11,19 @@ STRUCTURING_ELEMENTS = {'MOORE': STRUCTURING_ELEMENT1,
 
 STRUCTURING_ELEMENT = STRUCTURING_ELEMENTS['MOORE']
 
+ENSEMBLES = {0: 'landscape_control_input_test_data',
+             1: 'landscape_control_input_test_beta_cluster_sizes',
+             2: 'landscape_control_package'}
+
+
+TEST_TOP_N = 5  # Test the top N clusters connect to from R0-connected
+INTERFACE_MARGIN = 5
+MIN_CLUSTER_INTERMEDIATE_SIZE = 2
+TARGETS_C1_C2 = [1, 2]
+MIN_CLUSTER_JOIN_SIZE = 5
+MIN_CLUSTER_JOIN_RATIO = 0.10
+FRAGMENT_RANK = 1
+
 
 class Ensemble_info():   # High level struct, holds all ensemble info
     def __init__(self, ensemble_name :str):
@@ -29,14 +42,7 @@ class Ensemble_info():   # High level struct, holds all ensemble info
 
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    from delegator_methods import orchestrate_fragmentation
-    ensembles = {0: 'landscape_control_input_test_data',
-                 1: 'landscape_control_input_test_beta_cluster_sizes',
-                 2: 'landscape_control_package'}
 
-    orchestrate_fragmentation(ensemble_name=ensembles[2])
 
 
 

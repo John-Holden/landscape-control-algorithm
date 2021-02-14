@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from typing import Union
-from run_main import PATH_TO_INPUT_DATA
+from parameters_and_setup import PATH_TO_INPUT_DATA
 from cluster_find import rank_cluster_map
 from matplotlib.colors import LinearSegmentedColormap
 

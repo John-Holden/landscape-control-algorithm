@@ -5,6 +5,8 @@ import sys
 import itertools
 import numpy as np
 from typing import Union, Tuple, Callable
+import matplotlib.pyplot as plt
+from plotting_methods import plot_R0_clusters
 from scipy.ndimage.morphology import binary_dilation
 
 from cluster_find import rank_cluster_map, label_connected, cluster_freq_count
@@ -205,10 +207,6 @@ def find_alpha_discontinuities(alpha_steps, R0_map):
         targets = [comb for comb in itertools.combinations(cluster_joins, 2) if 1 in comb]
         cluster_size_ratios = [cluster_sizes[comb[1] - 1] / cluster_sizes[comb[0] - 1] for comb in targets]
 
-        if max(sizes) < MIN_CLUSTER_JOIN_SIZE or max(cluster_size_ratios) < MIN_CLUSTER_JOIN_RATIO:
-            # skip small cluster-sizes or insignificant joins
-            continue
-
         joins_at_alpha[index] = {'cluster_targets': targets,
                                 'sizes': sizes,
                                  f'ratios' : cluster_size_ratios}
@@ -255,7 +253,9 @@ def get_payoff(patches:np.ndarray, R0_map:np.ndarray) -> float:
     """
     Find the payoff, defined as the second largest fragment dived by the number of patches to fragment.
     """
-    target_sizes = rank_cluster_map(R0_map, get_ranks=2)[1]
+    target_sizes = rank_cluster_map(R0_map)[1]
+    print('len targets: ', len(target_sizes))
+
     return target_sizes[1] / len(patches[0])
 
 
@@ -285,6 +285,8 @@ def find_best(frag_method: Callable) -> Callable:
         alpha_steps = get_alpha_steps('auto', R0_max=7, R0_min=0.99, number_of_steps=30)
         join_history = find_alpha_discontinuities(alpha_steps, R0_map)
         best_payoff, iteration, optimal_indices = 0, 0, None
+        plt.title('R0 in: ')
+        plot_R0_clusters(R0_map, 1)
         for alpha_index, join_info in join_history.items():
             alpha_steps_ = alpha_steps[alpha_index:]
 
@@ -306,6 +308,8 @@ def find_best(frag_method: Callable) -> Callable:
         if optimal_indices is None:
             raise NotImplemented
 
+        plt.title(f'best out of {iteration+1}')
+        plot_R0_clusters(rank_cluster_map(optimal_fragmentation)[0])
         return optimal_indices, optimal_fragmentation
 
     return iterator
@@ -338,7 +342,7 @@ def alpha_stepping_method(R0_map:np.ndarray, cluster_targets:np.ndarray=None,  a
         critical_joins += patches_to_remove
 
     critical_joins = np.where(critical_joins)
-    critical_joins = (tuple(critical_joins[0]), tuple(critical_joins[1]))
+    critical_joins = (tuple([int(i) for i in critical_joins[0]]), tuple([int(i) for i in critical_joins[1]]))
 
     return critical_joins, R0_map
 

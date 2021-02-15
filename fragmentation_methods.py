@@ -349,15 +349,14 @@ def update_fragmentation_target(R0_map:np.ndarray, patch_indices:tuple) -> np.nd
     return rank_cluster_map(R0_map, get_ranks=1)[0]
 
 
-def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, save_to_path:str,
-                    species:str='fex', plot:bool=False) -> dict:
+def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, plot:bool=False) -> Tuple[dict, np.ndarray]:
     """
     Iteratively fragment the largest cluster in the R0_map via targeted tree felling algorithm
     i.e. the `alpha-stepping' method. Save felled patches to file. Return fragmented domain.
     :rtype: object
     """
-    if R0_map_raw.max() < 1:
-        # Trivial map
+
+    if R0_map_raw.max() < 1: # Trivial map
         return None
 
     connecting_patches = {}
@@ -366,9 +365,8 @@ def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, save_t
     R0_indices = np.where(R0_map)
     R0_indices = [min(R0_indices[0]), max(R0_indices[0]), min(R0_indices[1]), max(R0_indices[1])]
     R0_map = R0_map[R0_indices[0]:R0_indices[1], R0_indices[2]: R0_indices[3]]  # trim domain and save.
-    np.save(f'{save_to_path}/{species}_R0_map_rank_{FRAGMENT_RANK}_cluster', R0_map)
-    plot_R0_clusters(R0_map)
-    assert 0
+    R0_map_ = np.copy(R0_map)  # copy of processed domain - to save
+
     if plot:
         plt.title('R0-map in put:')
         plot_R0_clusters(rank_cluster_map(R0_map)[0])
@@ -382,12 +380,16 @@ def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, save_t
         R0_target = update_fragmentation_target(R0_map, connecting_patch_indices)
         R0_target = R0_target * R0_map
 
+        if plot:
+            plt.title(f'R0-target @ {iteration}:')
+            plot_R0_clusters(R0_target, 1)
+
     if plot:
         plt.title(f'Fragmented to {iteration+1} iterations')
         plot_fragmented_domain(connecting_patches, R0_map)
 
     print(f'Time taken to fragment {fragmentation_iterations} iterations: {datetime.datetime.now() - time}')
-    return connecting_patches
+    return connecting_patches, R0_map_
 
 
 

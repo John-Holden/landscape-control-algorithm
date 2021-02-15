@@ -113,6 +113,7 @@ def plot_fragmented_domain(connecting_patches:dict, R0_map:np.ndarray):
     plt.imshow(connecting_patch_arr)
     plt.show()
 
+    plt.title('fragmented sub-clusters')
     R0_fragmented = rank_cluster_map(R0_map)[0]
     plot_R0_clusters(R0_fragmented)
     return

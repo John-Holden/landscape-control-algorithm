@@ -36,9 +36,22 @@ class Ensemble_info():   # High level struct, holds all ensemble info
         self.raw_data = 0.01 * np.genfromtxt(f'{PATH_TO_INPUT_DATA}/{self.species}.csv', delimiter=',')
         # Clean channel isles etc.
         self.raw_data = self.raw_data * np.load(f'{PATH_TO_INPUT_DATA}/uk_isle_shape.npy')[1:-1, 1:-1]
-        # if not present, init fragmentation directory
-        if not os.path.exists(f'{self.path_to_ensemble}/fragmentation_data'):
-            os.mkdir(f'{self.path_to_ensemble}/fragmentation_data')
+
+        # save/load paths
+        self.path2_R0_raw = f'{self.path_to_ensemble}/raw_fitted_R0_domains'
+        self.path2_R0_processed = f'{self.path_to_ensemble}/processed_R0_domains'
+        self.path2_culled_indices = f'{self.path_to_ensemble}/connecting_patch_data'
+
+        # if not present, init directories
+        if not os.path.exists(self.path2_R0_raw):
+            os.mkdir(self.path2_R0_raw)
+
+        if not os.path.exists(self.path2_R0_processed):
+            os.mkdir(self.path2_R0_processed)
+
+        if not os.path.exists(self.path2_culled_indices):
+            os.mkdir(self.path2_culled_indices)
+
 
 
 

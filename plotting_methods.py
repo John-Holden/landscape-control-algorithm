@@ -71,7 +71,7 @@ def plot_cluster_size_vs_alpha(iteration:int, alpha_steps:Union[list, np.ndarray
     return
 
 
-def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None):
+def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None, epi_c:Union[None, tuple] = None):
     """
     Rank and plot clusters
     """
@@ -97,6 +97,11 @@ def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None):
     cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
     im = plt.imshow(R0_map, cmap=cm)
     plt.colorbar(im)
+
+    if epi_c is not None:
+        circle = plt.Circle(epi_c, 1.5, fc='black', ec="red")
+        plt.gca().add_patch(circle)
+
     plt.show()
     return
 

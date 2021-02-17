@@ -11,7 +11,7 @@ from collections import defaultdict
 
 
 from cluster_find import rank_cluster_map
-from plotting_methods import plot_R0_clusters
+from plotting_methods import plot_fragmented_domain, plot_payoff_efficiencies
 from parameters_and_setup import PATH_TO_INPUT_DATA, ENSEMBLES, STRUCTURING_ELEMENT
 
 
@@ -23,6 +23,7 @@ class Scenario_test():
         path2_scenario = f'{species}_cg_{cg_factor}_beta_{beta_index}'
         path2_patch_data = f'connecting_patch_data/{path2_scenario}_iterations_{iterations}.json'
         path2_processed_R0_domain = f'processed_R0_domains/{path2_scenario}_processed_R0_domain.npy'
+
         try:
             self.R0_domain = np.load(f'{path2_ensemble}/{path2_processed_R0_domain}')  # load domain
             with open(f'{path2_ensemble}/{path2_patch_data}', 'r') as infile:  # load fragmentation data
@@ -32,8 +33,10 @@ class Scenario_test():
             sys.exit(f'Error, file(s) not found. Have you run the fragmentation algorithm ? \n {exc}')
 
         self.connecting_patches = {}
+        self.all_culled_patches = np.zeros_like(self.R0_domain)
         for iteration, indices in connecting_patches.items():
             self.connecting_patches[int(iteration)] = (tuple(indices[0]), tuple(indices[1]))
+            self.all_culled_patches[self.connecting_patches[int(iteration)]] = int(iteration) + 1
 
         self.iterations = iterations
         self.species = species
@@ -82,8 +85,7 @@ class Scenario_test():
         Update list of N random epicenters
         """
 
-        domain_indices = np.where(self.R0_domain)
-
+        domain_indices = np.where(self.R0_domain * np.where(self.all_culled_patches, 0, 1))
         randomise_index = random.sample(range(0, len(domain_indices[0])), number)
 
         self.epi_c = [domain_indices[0][randomise_index],
@@ -98,6 +100,11 @@ class Scenario_test():
         Find the payoff for a single fragmentation combination
         """
         target = R0_fragmented[epicenter[0], epicenter[1]]
+
+        if not target:
+            plt.title('error')
+            plot_fragmented_domain(fragment_lines, np.copy(self.R0_domain), epicenter, show_text=True)
+
         assert target, 'Error, not expecting a zero-valued cluster-target.'
 
         target = np.where(R0_fragmented == target)
@@ -117,7 +124,7 @@ class Scenario_test():
         return tuple(relevant_lines), num_patches_removed, sum(num_culled)
 
 
-    def find_all_payoffs(self, epi_center_number:int = 1):
+    def find_all_payoffs(self, epi_center_number:int = 1, plot_check:bool=False):
         """
         For a sample of random epicenters, find the payoff : N_saved / N_culled
         """
@@ -127,35 +134,22 @@ class Scenario_test():
             # Iterate through each epicenter
             assert not epi_c in self.payoffs  # ignore edge-case epicenters that already exist
             self.payoffs[epi_c] = {}
-            print('epi c ', epi_c)
-
             for index, comb in enumerate(self.frag_comb):
-                print('comb ', comb)
                 # Iterate through all combinations of containment
                 R0_fragmented, fragment_lines = self.domain_at_iteration(comb)
                 relevant_lines, num_rem, num_culled = self.find_single_payoff(epi_c, R0_fragmented, fragment_lines)
+                # if a fragmentation line does not bound the containing cluster, continue.
                 if relevant_lines in self.payoffs[epi_c]:
-                    print('\t already processed ', relevant_lines)
-                    plt.title(f'Og : {comb}, rel lines  {relevant_lines}')
-                    plot_R0_clusters(R0_fragmented, epi_c=epi_c)
+                    if plot_check:
+                        striped = [i for i in comb if i not in relevant_lines]
+                        plt.title(f'combination : {comb} | relevant lines : {relevant_lines} |strip : {striped}')
+                        plot_fragmented_domain(fragment_lines, np.copy(self.R0_domain), epi_c, show_text=True)
                     continue
 
-                print('adding ', relevant_lines, num_rem, num_culled)
                 self.payoffs[epi_c][relevant_lines] = {'Ns': num_rem, 'Nc':num_culled}
-
-                # if index % 5 == 0:
-                #     print('bounding lines : ', relevant_lines)
-                #     print('N_R : ', num_rem)
-                #     print('N_C : ', num_culled)
-                #     plt.title(f'{comb}')
-                #     plot_R0_clusters(R0_fragmented, epi_c=epi_c)
-
                 index += 1
 
-        print(self.payoffs)
-        print('processed #', index)
-
-
+        return self.payoffs, index
 
 
 
@@ -169,4 +163,6 @@ if __name__ == '__main__':
 
     R0_arr = scenario_test.domain_at_iteration(iterations=1)
     # plot_R0_clusters(R0_arr)
-    scenario_test.find_all_payoffs()
+    payoffs, num  = scenario_test.find_all_payoffs(epi_center_number=200)
+    print('processed #', num)
+    plot_payoff_efficiencies(payoffs)

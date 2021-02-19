@@ -157,7 +157,6 @@ def plot_payoff_efficiencies(payoff_store: dict):
     """
     Plot payoff found from scenario test.
     """
-
     N_saved = []
     N_culled = []
     for epic, payoffs in payoff_store.items():

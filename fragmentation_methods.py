@@ -71,50 +71,63 @@ def test_removal_disconnects(R0_fragmented:np.ndarray, cluster_targets:np.ndarra
     target_1_in_frag = np.unique(R0_fragmented[np.where(cluster_targets==1)])
     target_2_in_frag = np.unique(R0_fragmented[np.where(cluster_targets==2)])
 
-    print(target_1_in_frag)
-    print(target_2_in_frag)
-    target_2_in_frag = [0, 2]
-    if [1] == [2]:
-        print('hi')
-        assert 0
-    if target_1_in_frag != target_2_in_frag:
-        print('hi')
-        assert 0
+    try:
+        assert len(target_1_in_frag) == 1, f'Error, expecting a single value in C1, found {target_1_in_frag}'
+        assert len(target_2_in_frag) == 1, f'Error, expecting a single value in C2, found {target_2_in_frag}'
+        assert target_1_in_frag != target_2_in_frag, f'Error, C1 and C2 should not be equal, found {target_1_in_frag}'
+    except Exception as e:
+        plt.title('Error, I should be fragmented')
+        plot_R0_clusters(R0_fragmented)
+        plt.title('Error, cluster-targets')
+        plot_R0_clusters(cluster_targets)
+        sys.exit(e)
 
-    if len(ids) >= 2 and target_1_in_frag != target_2_in_frag:
-        assert len(target_1_in_frag) == len(target_2_in_frag) == 1
+    if len(ids) >= 2:
         return True
+    if len(ids) == 1:  # removal of patches did not fragment the cluster.
+        return False
+    else:
+        sys.exit(f'Error, something went wrong. Found cluster ids = {ids}')
 
-    return False # removal of patches did not fragment the cluster.
 
-
-def find_interface_joins(pre_connected_clusters:np.ndarray,
-                         potential_connectors:np.ndarray) -> Tuple[np.ndarray, int]:
+def find_interface_joins(cluster_targets:np.ndarray,
+                         cluster_interface:np.ndarray,
+                         became_non_zero:np.ndarray) -> Tuple[np.ndarray, int]:
     """
     Find small patches that connect the target-clusters which lay in the (close-range) cluster interface.
     To do this, we take a binary dilation (one 1 iterations) and find if this neighbours the cluster targets.
     """
 
+    # connections may exist in a single unit-cluster or an arbitrary-sized cluster, therefore, we need to label patches
+    became_non_zero = label_connected(became_non_zero)[0]
+
+    plt.title('became non zero clusters')
+    plot_R0_clusters(became_non_zero)
+
+
+
+    # patches which lay in the interface and become non-zero have the chance to connect C1 and C2
+    potential_connector_element_list =  np.unique(became_non_zero[np.where(cluster_interface)])[1:]
+
     connecting_patch_num = 0
-    connecting_patches = np.zeros_like(pre_connected_clusters)
-    connecting_patch_labelled, num_elements = label_connected(R0_map=potential_connectors)
+    connecting_patches = np.zeros_like(cluster_targets)
 
-    bd_cluster_target_1 = binary_dilation(pre_connected_clusters == 1, STRUCTURING_ELEMENT)
-    bd_cluster_target_2 = binary_dilation(pre_connected_clusters == 2, STRUCTURING_ELEMENT)
+    bd_cluster_target_1 = binary_dilation(cluster_targets == 1, STRUCTURING_ELEMENT)
+    bd_cluster_target_2 = binary_dilation(cluster_targets == 2, STRUCTURING_ELEMENT)
 
-    for connect_patch_id in range(1, num_elements+1):
-        target_patch = np.where(connecting_patch_labelled == connect_patch_id)
+    for connect_patch_id in potential_connector_element_list:
+        target_patch = np.where(became_non_zero == connect_patch_id)
         patch_in_target_1 = any(bd_cluster_target_1[target_patch])  # is patch in a cluster-target ?
         patch_in_target_2 = any(bd_cluster_target_2[target_patch])
         if patch_in_target_1 and patch_in_target_2:
             # Two or more neighbours suggest patch_id joins C1 and C2.
             for index in range(len(target_patch[0])):
+                # Find which elements of the connecting cluster directly neighbour C1 and C2 - ignore all others.
                 row, col = target_patch[0][index], target_patch[1][index]
                 row_coords = tuple([row + i for i in [-1,-1,-1,0,0,0,1,1,1]])
                 col_coords = tuple([col + i for i in [1,0,-1,1,0,-1,1,0,-1]])
                 moore_coords = tuple([row_coords, col_coords])
-                print(pre_connected_clusters[moore_coords])
-                if 1 in pre_connected_clusters[moore_coords] or 2 in pre_connected_clusters[moore_coords]:
+                if 1 in cluster_targets[moore_coords] or 2 in cluster_targets[moore_coords]:
                     connecting_patches[row, col] = 1
                     connecting_patch_num += 1
 
@@ -129,17 +142,43 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
     # patches which become non-zero in the alpha-step and belong to the post-connected cluster
     became_non_zero = R0_post_connect - np.where(R0_pre_connect, 1, 0)
     became_non_zero = became_non_zero >= 1
-    cluster_interface = binary_dilation(cluster_targets, STRUCTURING_ELEMENT)
-    cluster_interface = cluster_interface - np.where(cluster_targets, 1, 0)
-    potential_connectors = cluster_interface & became_non_zero
 
-    connecting_patches, connection_number = find_interface_joins(cluster_targets, potential_connectors)
+    # fill internal holes (we only need to consider patches on the interface), then rank-order
+    cluster_interface_ = binary_fill_holes(cluster_targets, STRUCTURING_ELEMENT)
+    cluster_interface_ = rank_cluster_map(cluster_interface_)[0]
+
+    # perimeter == binary dilated array - original array
+    cluster_interface = binary_dilation(cluster_interface_, STRUCTURING_ELEMENT)
+    cluster_interface = cluster_interface - np.where(cluster_interface_, 1, 0)
+
+    connecting_patches, connection_number = find_interface_joins(cluster_targets, cluster_interface, became_non_zero)
 
     R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
+
+    plt.title('pre-connected map')
+    plot_R0_clusters(rank_cluster_map(R0_pre_connect)[0])
+
+    plt.title('post-connected map')
+    plot_R0_clusters(rank_cluster_map(R0_post_connect)[0])
+
+    # plt.title('ranked fragmented map')
+    # plot_R0_clusters(rank_cluster_map(R0_fragmented)[0])
+    plt.title('cluster targets')
+    plot_R0_clusters(cluster_targets)
+    # plt.title('connecting patches')
+    # plot_R0_clusters(connecting_patches)
 
     if connection_number and test_removal_disconnects(R0_fragmented, cluster_targets):
         # The patches found in the interface fragmented the cluster.
         return connecting_patches
+
+
+    plt.title('Error, domain did not fragment')
+    plot_R0_clusters(rank_cluster_map(R0_fragmented)[0])
+    plt.title('Error, cluster targets')
+    plot_R0_clusters(cluster_targets)
+    plt.title(f'Error, connecting patches, number removed {connection_number}')
+    plot_R0_clusters(connecting_patches)
 
     assert connection_number, f'Error found 0 patches to remove'
     sys.exit('Error, cluster did not fragment.')
@@ -198,17 +237,11 @@ def update_targets(cluster_targets:np.ndarray, R0_d_alpha:np.ndarray) -> np.ndar
     For each alpha-step, update the cluster-targets which monotonically increase.
     """
 
-
     cluster_1 = np.unique(R0_d_alpha[np.where(cluster_targets == 1)]) # rank of C1 in R0 map @ alpha + d_alpha
     cluster_2 = np.unique(R0_d_alpha[np.where(cluster_targets == 2)]) # rank of C2 in R0 map @ alpha + d_alpha
 
     if len(cluster_1) == 1 and len(cluster_2) == 1 and not np.array_equal(cluster_1, cluster_2):
         # The addition of extra patches in the step are added to the targets, and the values 1,2, preserved.
-        cluster_1 = binary_fill_holes(np.where(R0_d_alpha == cluster_1[0], 1, 0), STRUCTURING_ELEMENT)
-        cluster_2 = binary_fill_holes(np.where(R0_d_alpha == cluster_2[0], 1, 0), STRUCTURING_ELEMENT)
-        plt.imshow(cluster_1)
-        plt.show()
-        assert 0, 'CONTINEUEEEEE'
         return np.where(R0_d_alpha == cluster_1[0], 1, 0) + np.where(R0_d_alpha == cluster_2, 2, 0)
 
     print(f'C1 found in ranks, {cluster_1}, of R0 + d_alpha |')
@@ -229,8 +262,6 @@ def set_cluster_targets(cluster_targets: np.ndarray, cluster_join:list) -> np.nd
     """
     Cluster targets, no matter their rank, are set to values 1 and 2 which are preserved throughout the iteration.
     """
-    cluster_targets = binary_fill_holes(cluster_targets, STRUCTURING_ELEMENT)
-    cluster_targets = rank_cluster_map(cluster_targets)[0]
     ids_to_cast = [id for id in cluster_join if id not in TARGETS_C1_C2]
     if len(ids_to_cast) == 0:  # cluster targets have ranks 1 and 2 i.e. in TARGETS_C1_C2
         return cluster_targets
@@ -293,6 +324,7 @@ def alpha_stepping_method(R0_map:np.ndarray, cluster_targets:np.ndarray=None,  a
     """
     critical_joins = np.zeros_like(R0_map)
     for alpha_index in range(len(alpha_steps) - 1):
+        print('alpha = ', alpha_steps[alpha_index])
         # Iterate through alpha index until alpha = 0.99
         R0_alpha = rank_cluster_map(R0_map > alpha_steps[alpha_index])[0]
         R0_d_alpha = rank_cluster_map(R0_map > alpha_steps[alpha_index+1])[0]

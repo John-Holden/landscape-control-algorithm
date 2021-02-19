@@ -9,12 +9,11 @@ from typing import Union, Tuple, Callable
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.ndimage.morphology import binary_dilation
+from scipy.ndimage.morphology import binary_dilation, binary_fill_holes
 
 from plotting_methods import plot_R0_clusters, plot_fragmented_domain
-from cluster_find import rank_cluster_map, label_connected, cluster_freq_count
-from parameters_and_setup import STRUCTURING_ELEMENT, TARGETS_C1_C2, MIN_CLUSTER_INTERMEDIATE_SIZE, \
-    INTERFACE_MARGIN, FRAGMENT_RANK
+from cluster_find import rank_cluster_map, label_connected
+from parameters_and_setup import STRUCTURING_ELEMENT, TARGETS_C1_C2, FRAGMENT_RANK
 
 
 
@@ -72,6 +71,16 @@ def test_removal_disconnects(R0_fragmented:np.ndarray, cluster_targets:np.ndarra
     target_1_in_frag = np.unique(R0_fragmented[np.where(cluster_targets==1)])
     target_2_in_frag = np.unique(R0_fragmented[np.where(cluster_targets==2)])
 
+    print(target_1_in_frag)
+    print(target_2_in_frag)
+    target_2_in_frag = [0, 2]
+    if [1] == [2]:
+        print('hi')
+        assert 0
+    if target_1_in_frag != target_2_in_frag:
+        print('hi')
+        assert 0
+
     if len(ids) >= 2 and target_1_in_frag != target_2_in_frag:
         assert len(target_1_in_frag) == len(target_2_in_frag) == 1
         return True
@@ -80,61 +89,36 @@ def test_removal_disconnects(R0_fragmented:np.ndarray, cluster_targets:np.ndarra
 
 
 def find_interface_joins(pre_connected_clusters:np.ndarray,
-                         connecting_patches:np.ndarray) -> Tuple[Tuple[tuple, tuple], int]:
+                         potential_connectors:np.ndarray) -> Tuple[np.ndarray, int]:
     """
     Find small patches that connect the target-clusters which lay in the (close-range) cluster interface.
     To do this, we take a binary dilation (one 1 iterations) and find if this neighbours the cluster targets.
     """
-    xcoords, ycoords = [], []
+
     connecting_patch_num = 0
-    connecting_patch_labelled, num_elements = label_connected(R0_map=connecting_patches)
+    connecting_patches = np.zeros_like(pre_connected_clusters)
+    connecting_patch_labelled, num_elements = label_connected(R0_map=potential_connectors)
+
+    bd_cluster_target_1 = binary_dilation(pre_connected_clusters == 1, STRUCTURING_ELEMENT)
+    bd_cluster_target_2 = binary_dilation(pre_connected_clusters == 2, STRUCTURING_ELEMENT)
+
     for connect_patch_id in range(1, num_elements+1):
-        target_patch_indices = np.where(connecting_patch_labelled == connect_patch_id)
-        array_mask = np.zeros_like(connecting_patch_labelled)
-        array_mask[target_patch_indices] = 1
-        array_mask = binary_dilation(array_mask, structure=STRUCTURING_ELEMENT,iterations=1)
-        neighbour_ids = pre_connected_clusters[np.where(array_mask)]  # Which clusters do the bd lay inside ?
-        neighbour_ids = set([id for id in neighbour_ids if id])
-        if len(neighbour_ids) >= 2:
+        target_patch = np.where(connecting_patch_labelled == connect_patch_id)
+        patch_in_target_1 = any(bd_cluster_target_1[target_patch])  # is patch in a cluster-target ?
+        patch_in_target_2 = any(bd_cluster_target_2[target_patch])
+        if patch_in_target_1 and patch_in_target_2:
             # Two or more neighbours suggest patch_id joins C1 and C2.
-            assert np.array_equal(TARGETS_C1_C2, neighbour_ids) == 0, f'Error, expected cluster ids {neighbour_ids} ' \
-                                                                     f'to match target interface {TARGETS_C1_C2}'
-            xcoords.extend(target_patch_indices[0])
-            ycoords.extend((target_patch_indices[1]))
-            connecting_patch_num += len(target_patch_indices[0])
+            for index in range(len(target_patch[0])):
+                row, col = target_patch[0][index], target_patch[1][index]
+                row_coords = tuple([row + i for i in [-1,-1,-1,0,0,0,1,1,1]])
+                col_coords = tuple([col + i for i in [1,0,-1,1,0,-1,1,0,-1]])
+                moore_coords = tuple([row_coords, col_coords])
+                print(pre_connected_clusters[moore_coords])
+                if 1 in pre_connected_clusters[moore_coords] or 2 in pre_connected_clusters[moore_coords]:
+                    connecting_patches[row, col] = 1
+                    connecting_patch_num += 1
 
-    return (tuple(xcoords), tuple(ycoords)), connecting_patch_num
-
-
-def find_intermediate_cluster_joins(R0_post_connect:np.ndarray,
-                                    cluster_targets:np.ndarray) -> Tuple[Tuple[tuple, tuple], int]:
-    """
-     Find the cluster(s) responsible for bridging the gap between C1 and C2 and
-     return the relevant edge-patches.
-    """
-    connecting_patch_num = 0
-    xcoords, ycoords = [], []
-    bd_targets = binary_dilation(cluster_targets, STRUCTURING_ELEMENT)
-    in_post_R0_not_targers = label_connected(R0_map=R0_post_connect * np.logical_not(cluster_targets))[0]
-    sizes, ids = cluster_freq_count(in_post_R0_not_targers)
-
-    for index, connect_patch_id in enumerate(ids):
-        if sizes[index] < MIN_CLUSTER_INTERMEDIATE_SIZE:  # Do not consider small clusters - should already be flagged
-            break
-
-        potential_join_indices = np.where(in_post_R0_not_targers == connect_patch_id)
-        array_mask = np.zeros_like(R0_post_connect)
-        array_mask[potential_join_indices] = 1
-        potential_cluster_join = binary_dilation(array_mask, STRUCTURING_ELEMENT)
-        neighbour_ids =  np.unique(cluster_targets[np.where(potential_cluster_join)])[1:]
-
-        if np.array_equal(TARGETS_C1_C2, neighbour_ids):  # Where cluster joins C1 and C2
-            target_patch_indices = np.where(bd_targets & array_mask)
-            xcoords.extend(target_patch_indices[0])
-            ycoords.extend(target_patch_indices[1])
-            connecting_patch_num += len(target_patch_indices[0])
-
-    return (tuple(xcoords), tuple(ycoords)), connecting_patch_num
+    return connecting_patches, connecting_patch_num
 
 
 def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_connect: np.ndarray,
@@ -145,39 +129,19 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
     # patches which become non-zero in the alpha-step and belong to the post-connected cluster
     became_non_zero = R0_post_connect - np.where(R0_pre_connect, 1, 0)
     became_non_zero = became_non_zero >= 1
+    cluster_interface = binary_dilation(cluster_targets, STRUCTURING_ELEMENT)
+    cluster_interface = cluster_interface - np.where(cluster_targets, 1, 0)
+    potential_connectors = cluster_interface & became_non_zero
 
-    R0_pre_connect_target_interface = np.zeros_like(R0_pre_connect)
-    for id in [1, 2]:  # Find an approximate interface for the cluster-targets having ids 1 and 2
-        R0_pre_connect_target_interface += binary_dilation(np.where(cluster_targets == id, 1, 0),
-                                                            structure=STRUCTURING_ELEMENT, iterations=INTERFACE_MARGIN)
-
-    # The union of cluster-target interface & the patches which became non-zero must contain the critically connecting patches
-    R0_pre_connect_target_interface = R0_pre_connect_target_interface > 1
-    R0_pre_connect_target_interface = R0_pre_connect_target_interface & became_non_zero
-
-    # Find patches which lay in the interface and connect the targets
-    connection_indicies, interface_remove_num = find_interface_joins(pre_connected_clusters=R0_pre_connect,
-                                                           connecting_patches=R0_pre_connect_target_interface)
-
-    connecting_patches = np.zeros_like(R0_pre_connect)
-    connecting_patches[connection_indicies] = 1
+    connecting_patches, connection_number = find_interface_joins(cluster_targets, potential_connectors)
 
     R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
-    if interface_remove_num and test_removal_disconnects(R0_fragmented, cluster_targets):
+
+    if connection_number and test_removal_disconnects(R0_fragmented, cluster_targets):
         # The patches found in the interface fragmented the cluster.
         return connecting_patches
 
-    # Find patches which connect the targets via intermediate cluster-cluster joins.
-    connection_indicies, cluster_edge_remove_num = find_intermediate_cluster_joins(R0_post_connect, cluster_targets)
-    connecting_patches[connection_indicies] = 1
-
-    R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
-    if cluster_edge_remove_num and test_removal_disconnects(R0_fragmented, cluster_targets):
-        # The patches found from intermediate cluster-join edges, & the interface, fragmented teh cluster.
-        return connecting_patches
-
-
-    assert cluster_edge_remove_num + interface_remove_num, f'Error found 0 patches to remove.'
+    assert connection_number, f'Error found 0 patches to remove'
     sys.exit('Error, cluster did not fragment.')
 
 
@@ -240,6 +204,11 @@ def update_targets(cluster_targets:np.ndarray, R0_d_alpha:np.ndarray) -> np.ndar
 
     if len(cluster_1) == 1 and len(cluster_2) == 1 and not np.array_equal(cluster_1, cluster_2):
         # The addition of extra patches in the step are added to the targets, and the values 1,2, preserved.
+        cluster_1 = binary_fill_holes(np.where(R0_d_alpha == cluster_1[0], 1, 0), STRUCTURING_ELEMENT)
+        cluster_2 = binary_fill_holes(np.where(R0_d_alpha == cluster_2[0], 1, 0), STRUCTURING_ELEMENT)
+        plt.imshow(cluster_1)
+        plt.show()
+        assert 0, 'CONTINEUEEEEE'
         return np.where(R0_d_alpha == cluster_1[0], 1, 0) + np.where(R0_d_alpha == cluster_2, 2, 0)
 
     print(f'C1 found in ranks, {cluster_1}, of R0 + d_alpha |')
@@ -260,6 +229,8 @@ def set_cluster_targets(cluster_targets: np.ndarray, cluster_join:list) -> np.nd
     """
     Cluster targets, no matter their rank, are set to values 1 and 2 which are preserved throughout the iteration.
     """
+    cluster_targets = binary_fill_holes(cluster_targets, STRUCTURING_ELEMENT)
+    cluster_targets = rank_cluster_map(cluster_targets)[0]
     ids_to_cast = [id for id in cluster_join if id not in TARGETS_C1_C2]
     if len(ids_to_cast) == 0:  # cluster targets have ranks 1 and 2 i.e. in TARGETS_C1_C2
         return cluster_targets
@@ -268,7 +239,7 @@ def set_cluster_targets(cluster_targets: np.ndarray, cluster_join:list) -> np.nd
     targets_to_cast = [value for value in TARGETS_C1_C2 if value not in cluster_join]
     assert len(ids_to_cast) == len(targets_to_cast)
     assert len(ids_to_cast) <= 2
-    for value, id in zip(targets_to_cast, ids_to_cast):
+    for value, id in zip(targets_to_cast, ids_to_cast):  # re-evaluate target -> \in [1, 2]
         cluster_targets[np.where(cluster_targets == id)] = value
 
     return cluster_targets
@@ -283,16 +254,22 @@ def find_best(frag_method: Callable) -> Callable:
         join_history = find_alpha_discontinuities(alpha_steps, R0_map)
         best_payoff, iteration, optimal_indices = 0, 0, None
 
-        for alpha_index, join_info in join_history.items():
+        for alpha_index, join_info in join_history.items():  # Iterate over different cluster-joins \in [1, \alpha_max]
             alpha_steps_ = alpha_steps[alpha_index:]
 
+            if iteration < 6:
+                iteration += 1
+                continue
+
             for cluster_join, join_ratio in zip(join_info['cluster_targets'], join_info['ratios']):
-                # set cluster targets for the iteration
+                # Each join could contain N-clusters, iterate through each join to the largest cluster
+                # e.g. C1-C2-C3 -> [C1, C2], [C1, C3]
                 cluster_targets = rank_cluster_map(R0_map > alpha_steps_[0], get_ranks=cluster_join)[0]
                 cluster_targets = set_cluster_targets(cluster_targets, cluster_join)
 
                 connecting_patches_indices, R0_map_fragmented = frag_method(R0_map, cluster_targets, alpha_steps_)
                 payoff = get_payoff(connecting_patches_indices, R0_map_fragmented)
+                assert 0
 
                 if payoff > best_payoff:
                     best_payoff = payoff

@@ -1,6 +1,7 @@
 """
 Methods related to fragmenting a domain of R0 values.
 """
+import os
 import sys
 import datetime
 import itertools
@@ -74,13 +75,10 @@ def test_removal_disconnects(R0_fragmented:np.ndarray, cluster_targets:np.ndarra
     try:
         assert len(target_1_in_frag) == 1, f'Error, expecting a single value in C1, found {target_1_in_frag}'
         assert len(target_2_in_frag) == 1, f'Error, expecting a single value in C2, found {target_2_in_frag}'
-        assert target_1_in_frag != target_2_in_frag, f'Error, C1 and C2 should not be equal, found {target_1_in_frag}'
+        assert target_1_in_frag != target_2_in_frag, f'Error, C1 and C2 should not be equal, found C1, C2 \in {target_1_in_frag}'
     except Exception as e:
-        plt.title('Error, I should be fragmented')
-        plot_R0_clusters(R0_fragmented)
-        plt.title('Error, cluster-targets')
-        plot_R0_clusters(cluster_targets)
-        sys.exit(e)
+        print(e)
+        return False
 
     if len(ids) >= 2:
         return True
@@ -100,11 +98,6 @@ def find_interface_joins(cluster_targets:np.ndarray,
 
     # connections may exist in a single unit-cluster or an arbitrary-sized cluster, therefore, we need to label patches
     became_non_zero = label_connected(became_non_zero)[0]
-
-    plt.title('became non zero clusters')
-    plot_R0_clusters(became_non_zero)
-
-
 
     # patches which lay in the interface and become non-zero have the chance to connect C1 and C2
     potential_connector_element_list =  np.unique(became_non_zero[np.where(cluster_interface)])[1:]
@@ -155,16 +148,7 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
 
     R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
 
-    plt.title('pre-connected map')
-    plot_R0_clusters(rank_cluster_map(R0_pre_connect)[0])
 
-    plt.title('post-connected map')
-    plot_R0_clusters(rank_cluster_map(R0_post_connect)[0])
-
-    # plt.title('ranked fragmented map')
-    # plot_R0_clusters(rank_cluster_map(R0_fragmented)[0])
-    plt.title('cluster targets')
-    plot_R0_clusters(cluster_targets)
     # plt.title('connecting patches')
     # plot_R0_clusters(connecting_patches)
 
@@ -172,16 +156,35 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
         # The patches found in the interface fragmented the cluster.
         return connecting_patches
 
+    # Plot and save exception.
+    #--------------------------------------------------------------#
+    plt.title('Error pre-connected map')
+    plot_R0_clusters(rank_cluster_map(R0_pre_connect)[0])
+    if not os.path.exists('./data_store/exceptions/e_pre_connected_map.npy'):
+        np.save('./data_store/exceptions/e_pre_connected_map', R0_pre_connect)
+
+    plt.title('Error post-connected map')
+    plot_R0_clusters(rank_cluster_map(R0_post_connect)[0])
+    if not os.path.exists('./data_store/exceptions/e_post_connected_map.npy'):
+        np.save('./data_store/exceptions/e_post_connected_map', R0_post_connect)
 
     plt.title('Error, domain did not fragment')
     plot_R0_clusters(rank_cluster_map(R0_fragmented)[0])
+    if not os.path.exists('./data_store/exceptions/e_fragments.npy'):
+        np.save('./data_store/exceptions/e_fragments', R0_fragmented)
+
     plt.title('Error, cluster targets')
     plot_R0_clusters(cluster_targets)
+    if not os.path.exists('./data_store/exceptions/e_targets.npy'):
+        np.save('./data_store/exceptions/e_targets', cluster_targets)
+
     plt.title(f'Error, connecting patches, number removed {connection_number}')
     plot_R0_clusters(connecting_patches)
+    if not os.path.exists('./data_store/exceptions/e_patches_detected.npy'):
+        np.save('./data_store/exceptions/e_patches_detected', connecting_patches)
 
     assert connection_number, f'Error found 0 patches to remove'
-    sys.exit('Error, cluster did not fragment.')
+    sys.exit()
 
 
 def find_alpha_discontinuities(alpha_steps, R0_map):
@@ -399,6 +402,22 @@ def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, plot:b
 
     print(f'Time taken to fragment {fragmentation_iterations} iterations: {datetime.datetime.now() - time}')
     return connecting_patches, R0_map_
+
+
+if __name__ == '__main__':
+    # Load in error patches
+    print('Running fragmentation for single iteration')
+    e_cluster_targets = np.load('./data_store/exceptions/e_targets.npy')
+    e_fragmented_R0_map = np.load('./data_store/exceptions/e_fragments.npy')
+    e_connective_patches = np.load('./data_store/exceptions/e_patches_detected.npy')
+    e_pre_connected_R0_map = np.load('./data_store/exceptions/e_pre_connected_map.npy')
+    e_post_connected_R0_map = np.load('./data_store/exceptions/e_post_connected_map.npy')
+
+    find_critically_connecting_patches(e_pre_connected_R0_map,
+                                       e_post_connected_R0_map,
+                                       e_cluster_targets)
+
+
 
 
 

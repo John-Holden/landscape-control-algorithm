@@ -149,12 +149,12 @@ def find_interface_joins(cluster_targets:np.ndarray,
 
 
 def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_connect: np.ndarray,
-                                       cluster_targets:np.ndarray, save:bool, iter_=None) -> np.ndarray:
+                                       cluster_targets:np.ndarray) -> np.ndarray:
     """
     If discontinuity is detected, find and return a binary map of the patches of land that join the largest cluster-join.
     """
-    # patches which become non-zero in the alpha-step and belong to the post-connected cluster
 
+    # patches which become non-zero in the alpha-step and belong to the post-connected cluster
     potential_connectors = rank_cluster_map(R0_post_connect * np.logical_not(cluster_targets))[0]
 
     # fill internal holes - we only need to consider patches on the interface
@@ -167,20 +167,6 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
     connecting_patches, connection_number = find_interface_joins(cluster_targets, cluster_interface, potential_connectors)
 
     R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
-    if save:
-        plt.title(f'cluster targets, iter {iter_}')
-        plot_R0_clusters(cluster_targets)
-        plt.title(f'pre-connected map, iter {iter_}')
-        plot_R0_clusters(R0_pre_connect)
-        plt.title(f'post-connected map, iter {iter_}')
-        plot_R0_clusters(R0_post_connect)
-        plt.title(f'fragmented, iter {iter_}')
-        plot_R0_clusters(R0_fragmented)
-        if iter_ == 2:
-            np.save(f'test_pre_connected_map', R0_pre_connect)
-            np.save(f'test_post_connected_map', R0_post_connect)
-            np.save(f'test_cluster_targets', cluster_targets)
-            assert 0
 
     if connection_number and test_removal_disconnects(R0_fragmented, cluster_targets):
         # The patches found in the interface fragmented the cluster.
@@ -238,11 +224,10 @@ def find_alpha_discontinuities(alpha_steps, R0_map):
         cluster_size_ratios = [cluster_sizes[comb[1] - 1] / cluster_sizes[comb[0] - 1] for comb in targets]
 
         if max(cluster_size_ratios) < 0.025:
-            continue # only consider significant joins
+            # only consider significant joins
+            continue
 
-        joins_at_alpha[index] = {'cluster_targets': targets,
-                                'sizes': sizes,
-                                 f'ratios' : cluster_size_ratios}
+        joins_at_alpha[index] = {'cluster_targets': targets, 'sizes': sizes, f'ratios' : cluster_size_ratios}
 
     return joins_at_alpha
 
@@ -286,8 +271,8 @@ def get_payoff(patches:np.ndarray, R0_map:np.ndarray) -> float:
     Find the payoff, defined as the second largest fragment dived by the number of patches to fragment.
     """
     target_sizes = rank_cluster_map(R0_map)[1]
-
-    return target_sizes[1] / len(patches[0])
+    # return 1/target_sizes[0] * (target_sizes[0] - target_sizes[1]) * (len(patches) * 5)
+    return target_sizes[1] / len(patches)
 
 
 def set_cluster_targets(cluster_targets: np.ndarray, cluster_join:list) -> np.ndarray:
@@ -315,9 +300,8 @@ def find_best(frag_method: Callable) -> Callable:
     def iterator(R0_map: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         alpha_steps = get_alpha_steps('auto', R0_max=7, R0_min=0.99, number_of_steps=30)
         join_history = find_alpha_discontinuities(alpha_steps, R0_map)
-        best_payoff, iteration, optimal_indices = 0, 0, None
-        all_payoffs = []
-        save = False
+        best_payoff, iteration, optimal_indices = None, 0, None
+
         for alpha_index, join_info in join_history.items():  # Iterate over different cluster-joins \in [1, \alpha_max]
             alpha_steps_ = alpha_steps[alpha_index:]
             print('alpha index ', alpha_index)
@@ -327,14 +311,10 @@ def find_best(frag_method: Callable) -> Callable:
                 cluster_targets = rank_cluster_map(R0_map > alpha_steps_[0], get_ranks=cluster_join)[0]
                 cluster_targets = set_cluster_targets(cluster_targets, cluster_join)
 
-                # if alpha_index == 25 and cluster_join[0] == 1 and cluster_join[1] == 3:
-                #     save = True
+                connecting_patches_indices, R0_map_fragmented = frag_method(R0_map, cluster_targets, alpha_steps_)
 
-                connecting_patches_indices, R0_map_fragmented = frag_method(R0_map, cluster_targets, alpha_steps_,
-                                                                            save)
-
-                print('\tjoin ', cluster_join)
                 if connecting_patches_indices is None:
+                    # Error
                     plt.title('Error input R0 map')
                     plot_R0_clusters(R0_map)
                     np.save(f'./data_store/exceptions/e_R0_map_{TIMESTAMP}', R0_map)
@@ -344,14 +324,12 @@ def find_best(frag_method: Callable) -> Callable:
 
                 payoff = get_payoff(connecting_patches_indices, R0_map_fragmented)
 
-                all_payoffs.append(payoff)
+                if best_payoff is None:
+                    best_payoff = payoff
+                    optimal_fragmentation = R0_map_fragmented
+                    optimal_indices = connecting_patches_indices
 
-                plt.title(f'R0 fragmented @ alpha index {alpha_index} | join {cluster_join}')
-                plot_R0_clusters(rank_cluster_map(R0_map_fragmented)[0])
-
-                print('\tpayoff', payoff)
-
-                if payoff > best_payoff:
+                elif payoff > best_payoff:
                     best_payoff = payoff
                     optimal_fragmentation = R0_map_fragmented
                     optimal_indices = connecting_patches_indices
@@ -361,7 +339,6 @@ def find_best(frag_method: Callable) -> Callable:
         if optimal_indices is None:
             raise ValueError('Did not find optimal fragmentation.')
 
-        print('all payoffs ', all_payoffs)
         return optimal_indices, optimal_fragmentation
 
     return iterator
@@ -459,44 +436,21 @@ def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, plot:b
 
 
 def run_single():
-
-    print('Running fragmentation for single iteration')
     load_from = './test_data/multiple_clusters_connect' # ./data_store/exceptions
     e_cluster_targets = np.load(f'{load_from}/test_cluster_targets.npy')
     e_pre_connected_R0_map = np.load(f'{load_from}/test_pre_connected_map.npy')
     e_post_connected_R0_map = np.load(f'{load_from}/test_post_connected_map.npy')
 
-    plt.title('targets')
-    plot_R0_clusters(e_cluster_targets)
-    plt.title('pre connect')
-    plot_R0_clusters(e_pre_connected_R0_map)
-    plt.title('post connect')
-    plot_R0_clusters(e_post_connected_R0_map)
-
-    crit_patches = find_critically_connecting_patches(e_pre_connected_R0_map,
+    find_critically_connecting_patches(e_pre_connected_R0_map,
                                        e_post_connected_R0_map,
                                        e_cluster_targets, save=False)
-
-    plt.title('connector patches')
-    plot_R0_clusters(rank_cluster_map(crit_patches)[0])
-
-    plt.title('fragmented domain')
-    plot_R0_clusters(rank_cluster_map(e_post_connected_R0_map * np.logical_not(crit_patches))[0])
 
 
 def run_target_iter():
     print('Running fragmentation for single iteration')
-    # e_R0_map = np.load(f'./data_store/exceptions/e_R0_map_{TIMESTAMP}.npy')
     e_R0_map = np.load(f'test_data/optimisze_break/test_R0_domain.npy')
-
-    plt.title('in map')
-    plot_R0_clusters(rank_cluster_map(e_R0_map)[0])
-
     critical_joins, R0_map  = alpha_stepping_method(e_R0_map)
 
-    plt.title('out map')
-    plot_R0_clusters(rank_cluster_map(R0_map)[0])
-    plt.show()
 
 
 if __name__ == '__main__':

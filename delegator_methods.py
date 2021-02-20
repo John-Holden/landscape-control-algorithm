@@ -65,7 +65,7 @@ def orchestrate_fragmentation(ensemble_name: str):  # import & run delegator met
 
     # define fragmentation parameters
     coarse_grain_factor = 5
-    iterations = 10
+    iterations = 5
     beta_index = 2
 
     # get ensemble

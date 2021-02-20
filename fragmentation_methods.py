@@ -300,7 +300,7 @@ def find_best(frag_method: Callable) -> Callable:
     def iterator(R0_map: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         alpha_steps = get_alpha_steps('auto', R0_max=7, R0_min=0.99, number_of_steps=30)
         join_history = find_alpha_discontinuities(alpha_steps, R0_map)
-        best_payoff, iteration, optimal_indices = None, 0, None
+        best_payoff, iteration, optimal_indices = 0, 0, None
 
         for alpha_index, join_info in join_history.items():  # Iterate over different cluster-joins \in [1, \alpha_max]
             alpha_steps_ = alpha_steps[alpha_index:]
@@ -315,21 +315,12 @@ def find_best(frag_method: Callable) -> Callable:
 
                 if connecting_patches_indices is None:
                     # Error
-                    plt.title('Error input R0 map')
-                    plot_R0_clusters(R0_map)
                     np.save(f'./data_store/exceptions/e_R0_map_{TIMESTAMP}', R0_map)
-                    plt.title('Error cluster-targets')
-                    plot_R0_clusters(cluster_targets)
                     sys.exit()
 
                 payoff = get_payoff(connecting_patches_indices, R0_map_fragmented)
 
-                if best_payoff is None:
-                    best_payoff = payoff
-                    optimal_fragmentation = R0_map_fragmented
-                    optimal_indices = connecting_patches_indices
-
-                elif payoff > best_payoff:
+                if payoff > best_payoff:
                     best_payoff = payoff
                     optimal_fragmentation = R0_map_fragmented
                     optimal_indices = connecting_patches_indices

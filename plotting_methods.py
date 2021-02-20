@@ -109,8 +109,13 @@ def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None, epi_c:Uni
 def plot_fragmented_domain(fragmented_domain:np.ndarray, R0_map:np.ndarray, epi_c:Union[None, tuple] = None,
                            show_text:bool=False):
     """
-    Plot the domain after it has been fragmented
+    `Plot the domain after it has been fragmented
+    :param fragmented_domain: a spatial map of identified patche
+    :param R0_map: a spatial map of the  domain
+    :param epi_c: optional, plot the epicenter when finding payoffs
+    :param show_text: optional, show the fragmentation id alongside the containment scenairo.
     """
+
     frag_number = np.unique(fragmented_domain)
     frag_number = frag_number[1:] if 0 in frag_number else frag_number
     colors = [f'C{i}' for i, line in enumerate(frag_number)]

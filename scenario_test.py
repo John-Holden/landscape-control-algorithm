@@ -158,11 +158,9 @@ if __name__ == '__main__':
 
     iter_ = 5
     scenario_test = Scenario_test(ENSEMBLES[2], beta_index=2, iterations=5)
-
     # scenario_test.fragment_combination()
-
     R0_arr = scenario_test.domain_at_iteration(iterations=1)
     # plot_R0_clusters(R0_arr)
-    payoffs, num  = scenario_test.find_all_payoffs(epi_center_number=200)
+    payoffs, num  = scenario_test.find_all_payoffs(epi_center_number=200, plot_check=True)
     print('processed #', num)
     plot_payoff_efficiencies(payoffs)

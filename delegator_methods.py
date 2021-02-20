@@ -65,7 +65,7 @@ def orchestrate_fragmentation(ensemble_name: str):  # import & run delegator met
 
     # define fragmentation parameters
     coarse_grain_factor = 5
-    iterations = 5
+    iterations = 10
     beta_index = 2
 
     # get ensemble
@@ -91,16 +91,14 @@ def orchestrate_fragmentation(ensemble_name: str):  # import & run delegator met
         np.save(path2_R0_raw, R0_raw)
 
     # run fragmentation algorithm
-    connecting_patches, R0_processed_domain = fragment_R0_map(R0_raw, iterations, plot=False)
+    connecting_patches, R0_processed_domain = fragment_R0_map(R0_raw, iterations, plot=True)
 
     np.save(path2_processed_R0, R0_processed_domain)
 
     # save connecting patches to file.
     with open(f'{path2_patch_data}', 'w') as outfile:
         json.dump(connecting_patches, outfile, indent=4)
-
     return 'success'
-
 
 
 if __name__ == '__main__':

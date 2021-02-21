@@ -9,7 +9,7 @@ from typing import Type
 import matplotlib.pyplot as plt
 
 from cluster_find import Cluster_sturct
-from fragmentation_methods import fragment_R0_map
+from cluster_fragmentation import fragment_R0_map
 from domain_methods import coarse_grain, get_R0_gradient_fitting
 
 from parameters_and_setup import Ensemble_info, ENSEMBLES
@@ -62,13 +62,11 @@ def get_clusters_over_betas(ensemble_name:str, cluster_ranks:int, coarse_grain_l
 
 
 def orchestrate_fragmentation(ensemble_name: str):  # import & run delegator methods
-
     # define fragmentation parameters
-    coarse_grain_factor = 2
-    iterations = 5
-    beta_index = 2
+    coarse_grain_factor = 5
+    iterations = 10
+    beta_index = 1
 
-    # get ensemble
     ensemble_info = Ensemble_info(ensemble_name)
 
     scenario_name = f'{ensemble_info.species}_cg_{coarse_grain_factor}_beta_{beta_index}'
@@ -76,13 +74,10 @@ def orchestrate_fragmentation(ensemble_name: str):  # import & run delegator met
     path2_processed_R0 = f'{ensemble_info.path2_R0_processed}/{scenario_name}_processed_R0_domain'
     path2_patch_data = f'{ensemble_info.path2_culled_indices}/{scenario_name}_iterations_{iterations}.json'
 
-
-    if os.path.exists(path2_patch_data):
-        # Check if data already exists
+    if os.path.exists(path2_patch_data): # Check if data already exists
         print(f'\nWarning: data {path2_patch_data} already exists!')
 
-    if os.path.exists(path2_R0_raw):
-        # load R0-map
+    if os.path.exists(path2_R0_raw): # load R0-map
         R0_raw = np.load(path2_R0_raw)
 
     else: # generate R0-map
@@ -90,12 +85,10 @@ def orchestrate_fragmentation(ensemble_name: str):  # import & run delegator met
         R0_raw = get_single_R0_cluster_map(ensemble_info, coarse_grain_factor, beta_index)
         np.save(path2_R0_raw, R0_raw)
 
-    # run fragmentation algorithm
-    connecting_patches, R0_processed_domain = fragment_R0_map(R0_raw, iterations, plot=True)
 
+    connecting_patches, R0_processed_domain = fragment_R0_map(R0_raw, iterations, plot=True)   # run fragmentation
     np.save(path2_processed_R0, R0_processed_domain)
 
-    # save connecting patches to file.
     with open(f'{path2_patch_data}', 'w') as outfile:
         json.dump(connecting_patches, outfile, indent=4)
     return 'success'

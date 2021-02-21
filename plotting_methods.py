@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Union, Iterable
+import os
+from typing import Union, List
 from parameters_and_setup import PATH_TO_INPUT_DATA
 from cluster_find import rank_cluster_map
 from matplotlib.colors import LinearSegmentedColormap
@@ -71,7 +72,8 @@ def plot_cluster_size_vs_alpha(iteration:int, alpha_steps:Union[list, np.ndarray
     return
 
 
-def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None, epi_c:Union[None, tuple] = None):
+def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None, epi_c:Union[None, tuple] = None,
+                     show:bool = True, save:bool=False, save_name:Union[None, str]=None):
     """
     Rank and plot clusters
     """
@@ -102,7 +104,14 @@ def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None, epi_c:Uni
         circle = plt.Circle((epi_c[1], epi_c[0]), 1.5, fc='black', ec="red")
         plt.gca().add_patch(circle)
 
-    plt.show()
+    if save:
+        name = 'cluster_fig' if save_name is None else save_name
+        plt.savefig(name)
+
+    if show:
+        plt.show()
+
+    plt.close()
     return
 
 

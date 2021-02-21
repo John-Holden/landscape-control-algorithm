@@ -443,7 +443,6 @@ def run_target_iter():
     critical_joins, R0_map  = alpha_stepping_method(e_R0_map)
 
 
-
 if __name__ == '__main__':
     # Load in error patches
     run_target_iter()

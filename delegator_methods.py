@@ -9,7 +9,7 @@ from typing import Type
 import matplotlib.pyplot as plt
 
 from cluster_find import Cluster_sturct
-from cluster_fragmentation import fragment_R0_map
+from landscape_control import fragment_R0_map
 from domain_methods import coarse_grain, get_R0_gradient_fitting
 
 from parameters_and_setup import Ensemble_info, ENSEMBLES
@@ -84,7 +84,6 @@ def orchestrate_fragmentation(ensemble_name: str):  # import & run delegator met
         print('generating R0-map')
         R0_raw = get_single_R0_cluster_map(ensemble_info, coarse_grain_factor, beta_index)
         np.save(path2_R0_raw, R0_raw)
-
 
     connecting_patches, R0_processed_domain = fragment_R0_map(R0_raw, iterations, plot=True)   # run fragmentation
     np.save(path2_processed_R0, R0_processed_domain)

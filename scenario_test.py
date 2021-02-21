@@ -130,7 +130,8 @@ class Scenario_test():
         """
         self.fragment_combination()
         self.get_epi_c(epi_center_number)
-        for epi_c in self.epi_c:
+        for index, epi_c in enumerate(self.epi_c):
+            print(f'{index}/{epi_center_number}')
             # Iterate through each epicenter
             assert not epi_c in self.payoffs  # ignore edge-case epicenters that already exist
             self.payoffs[epi_c] = {}
@@ -155,14 +156,11 @@ class Scenario_test():
 
 
 if __name__ == '__main__':
-
-    iter_ = 5
-    scenario_test = Scenario_test(ENSEMBLES[2], beta_index=2, iterations=5)
-
+    iter_ = 10
+    beta_ind = 2
+    scenario_test = Scenario_test(ENSEMBLES[2], beta_index=beta_ind, iterations=iter_)
     # scenario_test.fragment_combination()
-
-    R0_arr = scenario_test.domain_at_iteration(iterations=1)
     # plot_R0_clusters(R0_arr)
-    payoffs, num  = scenario_test.find_all_payoffs(epi_center_number=200)
+    payoffs, num  = scenario_test.find_all_payoffs(epi_center_number=200, plot_check=False)
     print('processed #', num)
     plot_payoff_efficiencies(payoffs)

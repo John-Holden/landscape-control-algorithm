@@ -1,6 +1,7 @@
 """
 Methods related to fragmenting a domain of R0 values.
 """
+
 import sys
 import datetime
 import itertools
@@ -9,13 +10,14 @@ from typing import Union, Tuple, Callable
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.ndimage.morphology import binary_dilation
+from scipy.ndimage.morphology import binary_dilation, binary_fill_holes
 
 from plotting_methods import plot_R0_clusters, plot_fragmented_domain
-from cluster_find import rank_cluster_map, label_connected, cluster_freq_count
-from parameters_and_setup import STRUCTURING_ELEMENT, TARGETS_C1_C2, MIN_CLUSTER_INTERMEDIATE_SIZE, \
-    INTERFACE_MARGIN, FRAGMENT_RANK
+from cluster_find import rank_cluster_map
+from parameters_and_setup import STRUCTURING_ELEMENT, TARGETS_C1_C2, FRAGMENT_RANK
 
+
+TIMESTAMP = datetime.datetime.now().strftime("%d-%m-%Y")
 
 
 def get_alpha_steps(alpha_steps: Union[iter, float, int, str], R0_min:float, R0_max:float,
@@ -72,69 +74,78 @@ def test_removal_disconnects(R0_fragmented:np.ndarray, cluster_targets:np.ndarra
     target_1_in_frag = np.unique(R0_fragmented[np.where(cluster_targets==1)])
     target_2_in_frag = np.unique(R0_fragmented[np.where(cluster_targets==2)])
 
-    if len(ids) >= 2 and target_1_in_frag != target_2_in_frag:
-        assert len(target_1_in_frag) == len(target_2_in_frag) == 1
+    try:
+        assert len(target_1_in_frag) == 1, f'Error, expecting a single value in C1, found {target_1_in_frag}'
+        assert len(target_2_in_frag) == 1, f'Error, expecting a single value in C2, found {target_2_in_frag}'
+        assert target_1_in_frag != target_2_in_frag, f'Error, C1 and C2 should not be equal, found C1, C2 \in {target_1_in_frag}'
+    except Exception as e:
+        print(e)
+        return False
+
+    if len(ids) >= 2:
         return True
+    if len(ids) == 1:  # removal of patches did not fragment the cluster.
+        return False
+    else:
+        sys.exit(f'Error, something went wrong. Found cluster ids = {ids}')
 
-    return False # removal of patches did not fragment the cluster.
 
-
-def find_interface_joins(pre_connected_clusters:np.ndarray,
-                         connecting_patches:np.ndarray) -> Tuple[Tuple[tuple, tuple], int]:
+def find_interface_joins(cluster_targets:np.ndarray,
+                         cluster_interface:np.ndarray,
+                         potential_connectors:np.ndarray) -> Tuple[np.ndarray, int]:
     """
-    Find small patches that connect the target-clusters which lay in the (close-range) cluster interface.
-    To do this, we take a binary dilation (one 1 iterations) and find if this neighbours the cluster targets.
+    Find which clusters join the target-clusters. To do this, we take a binary dilation of each cluster-element that
+    becomes non-zero in the step alpha -> d_alpha, and find if it neighbours both cluster targets.
     """
-    xcoords, ycoords = [], []
+
+    # patches which lay in the interface and become non-zero have the chance to connect C1 and C2
+    list_ = np.where(np.logical_and(potential_connectors, cluster_interface))
+    potential_connector_ids = np.unique(potential_connectors[list_])
+
     connecting_patch_num = 0
-    connecting_patch_labelled, num_elements = label_connected(R0_map=connecting_patches)
-    for connect_patch_id in range(1, num_elements+1):
-        target_patch_indices = np.where(connecting_patch_labelled == connect_patch_id)
-        array_mask = np.zeros_like(connecting_patch_labelled)
-        array_mask[target_patch_indices] = 1
-        array_mask = binary_dilation(array_mask, structure=STRUCTURING_ELEMENT,iterations=1)
-        neighbour_ids = pre_connected_clusters[np.where(array_mask)]  # Which clusters do the bd lay inside ?
-        neighbour_ids = set([id for id in neighbour_ids if id])
-        if len(neighbour_ids) >= 2:
+    connecting_patches = np.zeros_like(cluster_targets)
+
+    bd_cluster_target_1 = binary_dilation(cluster_targets == 1, STRUCTURING_ELEMENT)
+    bd_cluster_target_2 = binary_dilation(cluster_targets == 2, STRUCTURING_ELEMENT)
+
+    C1_join = []
+    C2_join = []
+    C1_C2_join = []
+
+    for cluster_id in potential_connector_ids:
+        target_patch = np.where(potential_connectors == cluster_id)
+        patch_in_target_1 = any(bd_cluster_target_1[target_patch])  # is patch in a cluster-target ?
+        patch_in_target_2 = any(bd_cluster_target_2[target_patch])
+        if patch_in_target_1 and patch_in_target_2:
             # Two or more neighbours suggest patch_id joins C1 and C2.
-            assert np.array_equal(TARGETS_C1_C2, neighbour_ids) == 0, f'Error, expected cluster ids {neighbour_ids} ' \
-                                                                     f'to match target interface {TARGETS_C1_C2}'
-            xcoords.extend(target_patch_indices[0])
-            ycoords.extend((target_patch_indices[1]))
-            connecting_patch_num += len(target_patch_indices[0])
+            for index in range(len(target_patch[0])):
+                # Find which elements of the connecting cluster directly neighbour C1 and C2 - ignore all others.
+                row, col = target_patch[0][index], target_patch[1][index]
+                row_coords = tuple([row + i for i in [-1,-1,-1,0,0,0,1,1,1]])
+                col_coords = tuple([col + i for i in [1,0,-1,1,0,-1,1,0,-1]])
+                moore_coords = tuple([row_coords, col_coords])
 
-    return (tuple(xcoords), tuple(ycoords)), connecting_patch_num
+                if 1 in cluster_targets[moore_coords] and 2 in cluster_targets[moore_coords]:
+                    C1_C2_join.append((row, col))
+                    connecting_patches[row, col] = 1
+                    connecting_patch_num += 1
+                    continue
+                elif 1 in cluster_targets[moore_coords]:
+                    C1_join.append((row, col))
+                elif 2 in cluster_targets[moore_coords]:
+                    C2_join.append((row, col))
 
+    if len(C1_join) < len(C2_join):
+        connecting_patch_num += len(C1_join)
+        for patch in C1_join:
+            connecting_patches[patch] = 1
 
-def find_intermediate_cluster_joins(R0_post_connect:np.ndarray,
-                                    cluster_targets:np.ndarray) -> Tuple[Tuple[tuple, tuple], int]:
-    """
-     Find the cluster(s) responsible for bridging the gap between C1 and C2 and
-     return the relevant edge-patches.
-    """
-    connecting_patch_num = 0
-    xcoords, ycoords = [], []
-    bd_targets = binary_dilation(cluster_targets, STRUCTURING_ELEMENT)
-    in_post_R0_not_targers = label_connected(R0_map=R0_post_connect * np.logical_not(cluster_targets))[0]
-    sizes, ids = cluster_freq_count(in_post_R0_not_targers)
+    elif len(C2_join) < len(C1_join) or len(C2_join) == len(C1_join):
+        connecting_patch_num += len(C2_join)
+        for patch in C2_join:
+            connecting_patches[patch] = 1
 
-    for index, connect_patch_id in enumerate(ids):
-        if sizes[index] < MIN_CLUSTER_INTERMEDIATE_SIZE:  # Do not consider small clusters - should already be flagged
-            break
-
-        potential_join_indices = np.where(in_post_R0_not_targers == connect_patch_id)
-        array_mask = np.zeros_like(R0_post_connect)
-        array_mask[potential_join_indices] = 1
-        potential_cluster_join = binary_dilation(array_mask, STRUCTURING_ELEMENT)
-        neighbour_ids =  np.unique(cluster_targets[np.where(potential_cluster_join)])[1:]
-
-        if np.array_equal(TARGETS_C1_C2, neighbour_ids):  # Where cluster joins C1 and C2
-            target_patch_indices = np.where(bd_targets & array_mask)
-            xcoords.extend(target_patch_indices[0])
-            ycoords.extend(target_patch_indices[1])
-            connecting_patch_num += len(target_patch_indices[0])
-
-    return (tuple(xcoords), tuple(ycoords)), connecting_patch_num
+    return connecting_patches, connecting_patch_num
 
 
 def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_connect: np.ndarray,
@@ -142,50 +153,57 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
     """
     If discontinuity is detected, find and return a binary map of the patches of land that join the largest cluster-join.
     """
+
     # patches which become non-zero in the alpha-step and belong to the post-connected cluster
-    became_non_zero = R0_post_connect - np.where(R0_pre_connect, 1, 0)
-    became_non_zero = became_non_zero >= 1
+    potential_connectors = rank_cluster_map(R0_post_connect * np.logical_not(cluster_targets))[0]
 
-    R0_pre_connect_target_interface = np.zeros_like(R0_pre_connect)
-    for id in [1, 2]:  # Find an approximate interface for the cluster-targets having ids 1 and 2
-        R0_pre_connect_target_interface += binary_dilation(np.where(cluster_targets == id, 1, 0),
-                                                            structure=STRUCTURING_ELEMENT, iterations=INTERFACE_MARGIN)
+    # fill internal holes - we only need to consider patches on the interface
+    cluster_interface_ = binary_fill_holes(cluster_targets, STRUCTURING_ELEMENT)
+    cluster_interface_ = rank_cluster_map(cluster_interface_)[0]
+    # computing binary dilated array - original array, gives the perimeter
+    cluster_interface = binary_dilation(cluster_interface_, STRUCTURING_ELEMENT)
+    cluster_interface = cluster_interface - np.where(cluster_interface_, 1, 0)
 
-    # The union of cluster-target interface & the patches which became non-zero must contain the critically connecting patches
-    R0_pre_connect_target_interface = R0_pre_connect_target_interface > 1
-    R0_pre_connect_target_interface = R0_pre_connect_target_interface & became_non_zero
-
-    # Find patches which lay in the interface and connect the targets
-    connection_indicies, interface_remove_num = find_interface_joins(pre_connected_clusters=R0_pre_connect,
-                                                           connecting_patches=R0_pre_connect_target_interface)
-
-    connecting_patches = np.zeros_like(R0_pre_connect)
-    connecting_patches[connection_indicies] = 1
+    connecting_patches, connection_number = find_interface_joins(cluster_targets, cluster_interface, potential_connectors)
 
     R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
-    if interface_remove_num and test_removal_disconnects(R0_fragmented, cluster_targets):
+
+    if connection_number and test_removal_disconnects(R0_fragmented, cluster_targets):
         # The patches found in the interface fragmented the cluster.
         return connecting_patches
 
-    # Find patches which connect the targets via intermediate cluster-cluster joins.
-    connection_indicies, cluster_edge_remove_num = find_intermediate_cluster_joins(R0_post_connect, cluster_targets)
-    connecting_patches[connection_indicies] = 1
+    # Plot errors, save exception and exit.
+    else:
+        print(f'Error, found {connection_number} patches to remove')
+        plt.title('Error pre-connected map')
+        plot_R0_clusters(rank_cluster_map(R0_pre_connect)[0])
+        np.save(f'./data_store/exceptions/e_pre_connected_map_{TIMESTAMP}', R0_pre_connect)
 
-    R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
-    if cluster_edge_remove_num and test_removal_disconnects(R0_fragmented, cluster_targets):
-        # The patches found from intermediate cluster-join edges, & the interface, fragmented teh cluster.
-        return connecting_patches
+        plt.title('Error post-connected map')
+        plot_R0_clusters(rank_cluster_map(R0_post_connect)[0])
+        np.save(f'./data_store/exceptions/e_post_connected_map_{TIMESTAMP}', R0_post_connect)
 
+        plt.title('Error, domain did not fragment')
+        plot_R0_clusters(rank_cluster_map(R0_fragmented)[0])
+        np.save(f'./data_store/exceptions/e_fragments_{TIMESTAMP}', R0_fragmented)
 
-    assert cluster_edge_remove_num + interface_remove_num, f'Error found 0 patches to remove.'
-    sys.exit('Error, cluster did not fragment.')
+        plt.title('Error, cluster targets')
+        plot_R0_clusters(cluster_targets)
+        np.save(f'./data_store/exceptions/e_targets_{TIMESTAMP}', cluster_targets)
+
+        if connection_number:
+            plt.title(f'Error, connecting patches, number removed {connection_number}')
+            plot_R0_clusters(connecting_patches)
+        np.save(f'./data_store/exceptions/e_patches_detected_{TIMESTAMP}', connecting_patches)
+
+        return None
 
 
 def find_alpha_discontinuities(alpha_steps, R0_map):
     """
     Find how the maximum-cluster size changes over the alpha-thresholding procedure. Return cluster-size vs alpha.
     """
-
+    print('alpha discontinuities')
     joins_at_alpha = {}
     for index in range(len(alpha_steps)-1):
         # Iterate through alpha and find where clusters join to form larger clusters.
@@ -205,9 +223,11 @@ def find_alpha_discontinuities(alpha_steps, R0_map):
         targets = [comb for comb in itertools.combinations(cluster_joins, 2) if 1 in comb]
         cluster_size_ratios = [cluster_sizes[comb[1] - 1] / cluster_sizes[comb[0] - 1] for comb in targets]
 
-        joins_at_alpha[index] = {'cluster_targets': targets,
-                                'sizes': sizes,
-                                 f'ratios' : cluster_size_ratios}
+        if max(cluster_size_ratios) < 0.025:
+            # only consider significant joins
+            continue
+
+        joins_at_alpha[index] = {'cluster_targets': targets, 'sizes': sizes, f'ratios' : cluster_size_ratios}
 
     return joins_at_alpha
 
@@ -234,7 +254,6 @@ def update_targets(cluster_targets:np.ndarray, R0_d_alpha:np.ndarray) -> np.ndar
     For each alpha-step, update the cluster-targets which monotonically increase.
     """
 
-
     cluster_1 = np.unique(R0_d_alpha[np.where(cluster_targets == 1)]) # rank of C1 in R0 map @ alpha + d_alpha
     cluster_2 = np.unique(R0_d_alpha[np.where(cluster_targets == 2)]) # rank of C2 in R0 map @ alpha + d_alpha
 
@@ -252,8 +271,8 @@ def get_payoff(patches:np.ndarray, R0_map:np.ndarray) -> float:
     Find the payoff, defined as the second largest fragment dived by the number of patches to fragment.
     """
     target_sizes = rank_cluster_map(R0_map)[1]
-
-    return target_sizes[1] / len(patches[0])
+    # return 1/target_sizes[0] * (target_sizes[0] - target_sizes[1]) * (len(patches) * 5)
+    return target_sizes[1] / len(patches)
 
 
 def set_cluster_targets(cluster_targets: np.ndarray, cluster_join:list) -> np.ndarray:
@@ -268,7 +287,7 @@ def set_cluster_targets(cluster_targets: np.ndarray, cluster_join:list) -> np.nd
     targets_to_cast = [value for value in TARGETS_C1_C2 if value not in cluster_join]
     assert len(ids_to_cast) == len(targets_to_cast)
     assert len(ids_to_cast) <= 2
-    for value, id in zip(targets_to_cast, ids_to_cast):
+    for value, id in zip(targets_to_cast, ids_to_cast):  # re-evaluate target -> \in [1, 2]
         cluster_targets[np.where(cluster_targets == id)] = value
 
     return cluster_targets
@@ -283,15 +302,22 @@ def find_best(frag_method: Callable) -> Callable:
         join_history = find_alpha_discontinuities(alpha_steps, R0_map)
         best_payoff, iteration, optimal_indices = 0, 0, None
 
-        for alpha_index, join_info in join_history.items():
+        for alpha_index, join_info in join_history.items():  # Iterate over different cluster-joins \in [1, \alpha_max]
             alpha_steps_ = alpha_steps[alpha_index:]
-
+            print('alpha index ', alpha_index)
             for cluster_join, join_ratio in zip(join_info['cluster_targets'], join_info['ratios']):
-                # set cluster targets for the iteration
+                # Each join could contain N-clusters, iterate through each join to the largest cluster
+                # e.g. C1-C2-C3 -> [C1, C2], [C1, C3]
                 cluster_targets = rank_cluster_map(R0_map > alpha_steps_[0], get_ranks=cluster_join)[0]
                 cluster_targets = set_cluster_targets(cluster_targets, cluster_join)
 
                 connecting_patches_indices, R0_map_fragmented = frag_method(R0_map, cluster_targets, alpha_steps_)
+
+                if connecting_patches_indices is None:
+                    # Error
+                    np.save(f'./data_store/exceptions/e_R0_map_{TIMESTAMP}', R0_map)
+                    sys.exit()
+
                 payoff = get_payoff(connecting_patches_indices, R0_map_fragmented)
 
                 if payoff > best_payoff:
@@ -302,7 +328,7 @@ def find_best(frag_method: Callable) -> Callable:
                 iteration+=1
 
         if optimal_indices is None:
-            raise NotImplemented
+            raise ValueError('Did not find optimal fragmentation.')
 
         return optimal_indices, optimal_fragmentation
 
@@ -310,7 +336,8 @@ def find_best(frag_method: Callable) -> Callable:
 
 
 @find_best
-def alpha_stepping_method(R0_map:np.ndarray, cluster_targets:np.ndarray=None,  alpha_steps:list = None) -> np.ndarray:
+def alpha_stepping_method(R0_map:np.ndarray, cluster_targets:np.ndarray=None,  alpha_steps:list = None,
+                          save=False) -> np.ndarray:
     """
     Perform the /alpha-stepping method over the R0-map in order to find critically-connecting patches.
     """
@@ -329,9 +356,13 @@ def alpha_stepping_method(R0_map:np.ndarray, cluster_targets:np.ndarray=None,  a
         if not np.array_equal(np.unique(cluster_targets), [0, 1, 2]):
             raise AssertionError  # Error, expected [0, 1, 2] in cluster-targets
 
-        patches_to_remove = find_critically_connecting_patches(R0_alpha, R0_d_alpha_target, cluster_targets)
-        R0_map = R0_map * np.logical_not(patches_to_remove)
+        patches_to_remove = find_critically_connecting_patches(R0_alpha, R0_d_alpha_target, cluster_targets, save,
+                                                               iter_=alpha_index)
 
+        if patches_to_remove is None:  # error, has occurred
+            return None, None
+
+        R0_map = R0_map * np.logical_not(patches_to_remove)
         cluster_targets = update_targets(cluster_targets, rank_cluster_map(R0_map > alpha_steps[alpha_index+1])[0])
         critical_joins += patches_to_remove
 
@@ -361,11 +392,14 @@ def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, plot:b
 
     connecting_patches = {}
     R0_map = np.where(R0_map_raw > 1, R0_map_raw, 0)  # consider above threshold positions
+
     R0_map = R0_map * np.array(rank_cluster_map(R0_map, get_ranks=FRAGMENT_RANK)[0] > 0).astype(int)  # concentrate on the largest cluster
     R0_indices = np.where(R0_map)
-    R0_indices = [min(R0_indices[0]), max(R0_indices[0]), min(R0_indices[1]), max(R0_indices[1])]
+    R0_indices = [min(R0_indices[0])-2, max(R0_indices[0])+2, min(R0_indices[1])-2, max(R0_indices[1])+2]
     R0_map = R0_map[R0_indices[0]:R0_indices[1], R0_indices[2]: R0_indices[3]]  # trim domain and save.
+
     R0_map_ = np.copy(R0_map)  # copy of processed domain - to save
+    fragmented_domain = np.zeros_like(R0_map)
 
     if plot:
         plt.title('R0-map in put:')
@@ -379,17 +413,37 @@ def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, plot:b
         connecting_patches[iteration] = connecting_patch_indices
         R0_target = update_fragmentation_target(R0_map, connecting_patch_indices)
         R0_target = R0_target * R0_map
-
+        fragmented_domain[connecting_patch_indices] = iteration+1
         if plot:
-            plt.title(f'R0-target @ {iteration}:')
-            plot_R0_clusters(R0_target, 1)
+            plt.title(f'fragmented domain @ iteraion {iteration+1}')
+            plot_R0_clusters(rank_cluster_map(R0_target_fragmented)[0])
 
-    if plot:
+    if plot :
         plt.title(f'Fragmented to {iteration+1} iterations')
-        plot_fragmented_domain(connecting_patches, R0_map)
+        plot_fragmented_domain(fragmented_domain, R0_map)
 
     print(f'Time taken to fragment {fragmentation_iterations} iterations: {datetime.datetime.now() - time}')
     return connecting_patches, R0_map_
 
 
+def run_single():
+    load_from = './test_data/multiple_clusters_connect' # ./data_store/exceptions
+    e_cluster_targets = np.load(f'{load_from}/test_cluster_targets.npy')
+    e_pre_connected_R0_map = np.load(f'{load_from}/test_pre_connected_map.npy')
+    e_post_connected_R0_map = np.load(f'{load_from}/test_post_connected_map.npy')
+
+    find_critically_connecting_patches(e_pre_connected_R0_map,
+                                       e_post_connected_R0_map,
+                                       e_cluster_targets, save=False)
+
+
+def run_target_iter():
+    print('Running fragmentation for single iteration')
+    e_R0_map = np.load(f'test_data/optimisze_break/test_R0_domain.npy')
+    critical_joins, R0_map  = alpha_stepping_method(e_R0_map)
+
+
+if __name__ == '__main__':
+    # Load in error patches
+    run_target_iter()
 

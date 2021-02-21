@@ -163,13 +163,28 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
     # computing binary dilated array - original array, gives the perimeter
     cluster_interface = binary_dilation(cluster_interface_, STRUCTURING_ELEMENT)
     cluster_interface = cluster_interface - np.where(cluster_interface_, 1, 0)
-
+    # Find interface connections
     connecting_patches, connection_number = find_interface_joins(cluster_targets, cluster_interface, potential_connectors)
-
     R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
 
     if connection_number and test_removal_disconnects(R0_fragmented, cluster_targets):
         # The patches found in the interface fragmented the cluster.
+        return connecting_patches
+
+    # Check edge-case whereby C2 is located in C1 or vice-versa
+    C1_filled = binary_fill_holes(cluster_targets == 1, STRUCTURING_ELEMENT)
+    C2_filled = binary_fill_holes(cluster_targets == 2, STRUCTURING_ELEMENT)
+    if any(C1_filled[np.where(cluster_targets == 2)]):
+        C2_interface = binary_dilation(cluster_targets == 2, STRUCTURING_ELEMENT)
+        connecting_patches = np.where(np.logical_and(C2_interface, R0_post_connect), 1, 0) - \
+                             np.where(cluster_targets == 2, 1, 0)
+    elif any(C2_filled[np.where(cluster_targets == 1)]):
+        C1_interface = binary_dilation(cluster_targets == 1, STRUCTURING_ELEMENT)
+        connecting_patches = np.where(np.logical_and(C1_interface, R0_post_connect), 1, 0) - \
+                             np.where(cluster_targets == 1, 1, 0)
+
+    R0_fragmented = R0_post_connect * np.logical_not(connecting_patches)
+    if test_removal_disconnects(R0_fragmented, cluster_targets):
         return connecting_patches
 
     # Plot errors, save exception and exit.
@@ -195,7 +210,6 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
             plt.title(f'Error, connecting patches, number removed {connection_number}')
             plot_R0_clusters(connecting_patches)
         np.save(f'./data_store/exceptions/e_patches_detected_{TIMESTAMP}', connecting_patches)
-
         return None
 
 
@@ -356,8 +370,7 @@ def alpha_stepping_method(R0_map:np.ndarray, cluster_targets:np.ndarray=None,  a
         if not np.array_equal(np.unique(cluster_targets), [0, 1, 2]):
             raise AssertionError  # Error, expected [0, 1, 2] in cluster-targets
 
-        patches_to_remove = find_critically_connecting_patches(R0_alpha, R0_d_alpha_target, cluster_targets, save,
-                                                               iter_=alpha_index)
+        patches_to_remove = find_critically_connecting_patches(R0_alpha, R0_d_alpha_target, cluster_targets)
 
         if patches_to_remove is None:  # error, has occurred
             return None, None
@@ -427,15 +440,16 @@ def fragment_R0_map(R0_map_raw: np.ndarray, fragmentation_iterations:int, plot:b
 
 
 def run_single():
-    load_from = './test_data/multiple_clusters_connect' # ./data_store/exceptions
-    e_cluster_targets = np.load(f'{load_from}/test_cluster_targets.npy')
-    e_pre_connected_R0_map = np.load(f'{load_from}/test_pre_connected_map.npy')
-    e_post_connected_R0_map = np.load(f'{load_from}/test_post_connected_map.npy')
+    load_from = './test_data/C2_is_inside_C1' # ./data_store/exceptions
+    cluster_targets = np.load(f'{load_from}/test_cluster_targets.npy')
+    pre_connected_R0_map = np.load(f'{load_from}/test_pre_connected_map.npy')
+    post_connected_R0_map = np.load(f'{load_from}/test_post_connected_map.npy')
 
-    find_critically_connecting_patches(e_pre_connected_R0_map,
-                                       e_post_connected_R0_map,
-                                       e_cluster_targets, save=False)
-
+    connector_patches = find_critically_connecting_patches(pre_connected_R0_map,
+                                                           post_connected_R0_map,
+                                                           cluster_targets)
+    plt.title('fragmented domain')
+    plot_R0_clusters(rank_cluster_map(post_connected_R0_map * np.logical_not(connector_patches))[0])
 
 def run_target_iter():
     print('Running fragmentation for single iteration')
@@ -445,5 +459,5 @@ def run_target_iter():
 
 if __name__ == '__main__':
     # Load in error patches
-    run_target_iter()
+    run_single()
 

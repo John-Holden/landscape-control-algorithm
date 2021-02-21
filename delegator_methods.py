@@ -64,7 +64,7 @@ def get_clusters_over_betas(ensemble_name:str, cluster_ranks:int, coarse_grain_l
 def orchestrate_fragmentation(ensemble_name: str):  # import & run delegator methods
 
     # define fragmentation parameters
-    coarse_grain_factor = 5
+    coarse_grain_factor = 2
     iterations = 5
     beta_index = 2
 

@@ -1,23 +1,22 @@
-import matplotlib.pyplot as plt
 import numpy as np
-import os
-from typing import Union, List
+from typing import Union
+import matplotlib.pyplot as plt
+from ._cluster_find import rank_cluster_map
 from parameters_and_setup import PATH_TO_INPUT_DATA
-from cluster_find import rank_cluster_map
 from matplotlib.colors import LinearSegmentedColormap
-
 
 pltParams = {'figure.figsize': (7.5, 5.5),
              'axes.labelsize': 15,
              'ytick.labelsize': 15,
              'xtick.labelsize': 15,
              'legend.fontsize': 'x-large'}
+
 plt.rcParams.update(pltParams)
 
 
 def plot_R0_vs_rho_over_ensemble(ensemble_name):
     'Plot R0 vs Rho for beta values'
-    from domain_methods import linear_func
+    from ._domain_processing import linear_func
     from scipy.optimize import curve_fit
 
     path_to_ensemble = f'{PATH_TO_INPUT_DATA}/{ensemble_name}'
@@ -35,7 +34,8 @@ def plot_R0_vs_rho_over_ensemble(ensemble_name):
 
     plt.plot([rhos[0], rhos[-1]], [1, 1], c='r', ls='--')
     plt.show()
-    
+
+
 def plot_top_cluster_sizes_vs_beta(ensemble_name):
     """
     Plot how top cluster size varies with infectivity beta.
@@ -47,7 +47,7 @@ def plot_top_cluster_sizes_vs_beta(ensemble_name):
     print([b for b in betas])
     fig, ax = plt.subplots()
     ax.plot(betas, cluster_sizes, label=f'Gaussian dispersal 1km')
-    ax.plot([0.00014, 0.00014], [0, 2*10**5])
+    ax.plot([0.00014, 0.00014], [0, 2 * 10 ** 5])
     ax.scatter(betas, cluster_sizes)
     plt.xlabel(r'$\beta$')
     plt.ylabel(r'Max cluster size $\mathrm{km}^2$')
@@ -56,9 +56,9 @@ def plot_top_cluster_sizes_vs_beta(ensemble_name):
     return
 
 
-def plot_cluster_size_vs_alpha(iteration:int, alpha_steps:Union[list, np.ndarray],
+def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarray],
                                largest_cluster_size_vs_alpha: np.ndarray,
-                               discontinuity_index:Union[int, None] = None):
+                               discontinuity_index: Union[int, None] = None):
     """
     Plot cluster sizes for one iteration and one value of alpha.
     """
@@ -72,8 +72,8 @@ def plot_cluster_size_vs_alpha(iteration:int, alpha_steps:Union[list, np.ndarray
     return
 
 
-def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None, epi_c:Union[None, tuple] = None,
-                     show:bool = True, save:bool=False, save_name:Union[None, str]=None):
+def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: Union[None, tuple] = None,
+                     show: bool = True, save: bool = False, save_name: Union[None, str] = None):
     """
     Rank and plot clusters
     """
@@ -90,10 +90,10 @@ def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None, epi_c:Uni
         R0_map = R0_map + R0_map_background
         colors.insert(0, 'lightgrey')
         colors.insert(1, 'white')
-        nbins = cluster_number+2
+        nbins = cluster_number + 2
     else:
         colors.insert(0, 'white')
-        nbins = cluster_number+1
+        nbins = cluster_number + 1
 
     cmap_name = 'my_list'
     cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
@@ -115,8 +115,8 @@ def plot_R0_clusters(R0_map:np.ndarray, rank: Union[None, int] = None, epi_c:Uni
     return
 
 
-def plot_fragmented_domain(fragmented_domain:np.ndarray, R0_map:np.ndarray, epi_c:Union[None, tuple] = None,
-                           show_text:bool=False):
+def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, epi_c: Union[None, tuple] = None,
+                           show_text: bool = False):
     """
     `Plot the domain after it has been fragmented
     :param fragmented_domain: a spatial map of identified patche
@@ -139,9 +139,9 @@ def plot_fragmented_domain(fragmented_domain:np.ndarray, R0_map:np.ndarray, epi_
     show_text_dict = {} if show_text else None
     fragmented_domain_ = np.zeros_like(fragmented_domain)
     for i, frag_line in enumerate(frag_number):
-        fragmented_domain_[np.where(fragmented_domain == frag_line)] = i+2
+        fragmented_domain_[np.where(fragmented_domain == frag_line)] = i + 2
         if show_text:
-            show_text_dict[frag_line] = i+2
+            show_text_dict[frag_line] = i + 2
 
     # Include background of R0 map having numerical value 1 shown as light-grey
     R0_map[np.where(fragmented_domain)] = 0
@@ -155,12 +155,12 @@ def plot_fragmented_domain(fragmented_domain:np.ndarray, R0_map:np.ndarray, epi_
         circle = plt.Circle((epi_c[1], epi_c[0]), 1.5, fc='black', ec="red")
         plt.gca().add_patch(circle)
 
+    # Optional, display fragmentation iteration next to spatial line
     if show_text:
-        print(show_text_dict)
         for frag_line, numerical_val in show_text_dict.items():
             line_ind = np.where(fragmented_domain_ == numerical_val)
             N_points = len(line_ind[0])
-            x, y = line_ind[0].sum()/N_points, line_ind[1].sum()/N_points
+            x, y = line_ind[0].sum() / N_points, line_ind[1].sum() / N_points
             plt.text(y, x, f'{frag_line}', c='b', size=10)
 
     plt.show()
@@ -191,16 +191,8 @@ def plot_payoff_efficiencies(payoff_store: dict):
 
     plt.title('payoff2')
     N_saved, N_culled = np.array(N_saved), np.array(N_culled)
-    plt.scatter(range(len(N_culled)), np.sort(N_saved/N_culled))
+    plt.scatter(range(len(N_culled)), np.sort(N_saved / N_culled))
     plt.xlabel('rank')
     plt.ylabel('Ns/Nc')
     plt.show()
     return
-
-
-
-
-
-if __name__ == '__main__':
-    plot_top_cluster_sizes_vs_beta(ensemble_name='landscape_control_input_test_data')
-    plot_R0_vs_rho_over_ensemble(ensemble_name='landscape_control_input_test_data')

@@ -38,8 +38,8 @@ class Ensemble_info():   # High level struct, holds all ensemble info
         self.raw_data = self.raw_data * np.load(f'{PATH_TO_INPUT_DATA}/uk_isle_shape.npy')[1:-1, 1:-1]
 
         # save/load paths
-        self.path2_R0_raw = f'{self.path_to_ensemble}/raw_fitted_R0_domains'
-        self.path2_R0_processed = f'{self.path_to_ensemble}/processed_R0_domains'
+        self.path2_R0_raw = f'{self.path_to_ensemble}/processed_R0_maps'
+        self.path2_R0_processed = f'{self.path_to_ensemble}/fragmented_R0_domain'
         self.path2_culled_indices = f'{self.path_to_ensemble}/connecting_patch_data'
 
         # if not present, init directories

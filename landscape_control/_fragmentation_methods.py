@@ -9,6 +9,8 @@ from itertools import combinations
 
 from ._cluster_find import rank_cluster_map
 from ._plotting_methods import plot_R0_clusters
+from .exceptions import ClustersDidNotFragment
+
 from parameters_and_setup import STRUCTURING_ELEMENT
 
 TIMESTAMP = datetime.datetime.now().strftime("%d-%m-%Y")
@@ -256,8 +258,12 @@ def find_critically_connecting_patches(R0_pre_connect: np.ndarray, R0_post_conne
 
     # Plot errors, save exception and exit.
     else:
-        plot_save_errors(connection_number, R0_pre_connect, R0_post_connect,
-                     R0_fragmented, cluster_targets, connecting_patches)
+        # raise ClustersDidNotFragment(R0_pre_connect, R0_post_connect, R0_fragmented, cluster_targets, connecting_patches,
+        #                              connection_number)
+
+        plot_save_errors(connection_number, R0_pre_connect, R0_post_connect, R0_fragmented, cluster_targets,
+                         connecting_patches)
+
         return None
 
 

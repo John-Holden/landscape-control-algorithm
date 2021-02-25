@@ -47,7 +47,3 @@ class ClustersDidNotFragment(Exception):
         np.save(f'./data_store/exceptions/e_pre_connected_map_{TIMESTAMP}', self.R0_discon)
         np.save(f'./data_store/exceptions/e_post_connected_map_{TIMESTAMP}', self.R0_connect)
         np.save(f'./data_store/exceptions/e_patches_detected_{TIMESTAMP}', self.connector_patches)
-
-
-if 0 != 1:
-    raise  ClustersDidNotFragment(1)

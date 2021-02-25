@@ -4,12 +4,12 @@ from scipy.optimize import curve_fit
 from ._cluster_find import rank_cluster_map
 
 
-def linear_func(xdata:Iterable, c:int):
+def linear_func(xdata: Iterable, c: int):
     return c * xdata
 
 
-def get_R0_gradient_fitting(species_distribution_map:np.ndarray, rhos:np.ndarray,
-                            R0_v_rho_mapping:np.ndarray, print_fitting=False) -> np.ndarray:
+def get_R0_gradient_fitting(species_distribution_map: np.ndarray, rhos: np.ndarray,
+                            R0_v_rho_mapping: np.ndarray, print_fitting=False) -> np.ndarray:
     """
      For an array of R0 vs rho values, fit data to linear function. Then return tree-density mapped to R0-values.
     """
@@ -84,7 +84,7 @@ def process_R0_map(R0_map_raw:np.ndarray, get_cluster:int, threshold:Union[int, 
 #     """
 #     For each value of beta, find the top N ranked cluster size(s). Return an array of cluster sizes vs beta..
 #     """
-#     ash_ensemble = Ensemble_info(ensemble_name=ensemble_name)  # initialise domain structures
+#     ash_ensemble = EnsembleInfo(ensemble_name=ensemble_name)  # initialise domain structures
 #     species_distribution_map = coarse_grain(domain=ash_ensemble.raw_data, cg_factor=coarse_grain_level)
 #     cluster_sizes = [None] * len(ash_ensemble.betas)
 #     print(f'RHOS : {ash_ensemble.rhos} | {len(ash_ensemble.rhos)}')

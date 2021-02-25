@@ -2,12 +2,13 @@ import os
 import numpy as np
 
 PATH_TO_INPUT_DATA = f'{os.getcwd()}/data_store'
+PATH_TO_EXCEPTIONS = f'{os.getcwd()}/data_store/exceptions/'
 
 STRUCTURING_ELEMENT1  = np.ones(shape=[3,3]) # defined nearest neighbourhood of land patches.
 STRUCTURING_ELEMENT2  = np.ones(shape=[3,3])
 STRUCTURING_ELEMENT2[(0, 0, 2, 2), (0, 2, 0, 2)] = 0 # defined nearest neighbourhood of land patches.
 STRUCTURING_ELEMENTS = {'MOORE': STRUCTURING_ELEMENT1,
-                         'VON-N': STRUCTURING_ELEMENT2}
+                        'VON-N': STRUCTURING_ELEMENT2}
 
 STRUCTURING_ELEMENT = STRUCTURING_ELEMENTS['MOORE']
 
@@ -25,9 +26,10 @@ MIN_CLUSTER_JOIN_RATIO = 0.10
 FRAGMENT_RANK = 1
 
 
-class Ensemble_info():   # High level struct, holds all ensemble info
-    def __init__(self, ensemble_name :str):
-        self.species = 'fex'
+class EnsembleInfo:   # High level struct, holds all ensemble info
+
+    def __init__(self, ensemble_name: str):
+        self.species = 'Fex'
         self.path_to_ensemble = f'{PATH_TO_INPUT_DATA}/{ensemble_name}'
         self.R0_vs_rho_beta = np.load(f'{self.path_to_ensemble}/ensemble.npy')
         self.rhos = np.load(f'{self.path_to_ensemble}/rhos.npy')

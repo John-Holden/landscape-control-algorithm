@@ -1,5 +1,3 @@
-import sys
-import json
 import random
 import itertools
 import numpy as np
@@ -8,8 +6,9 @@ from scipy.ndimage import binary_dilation
 from typing import Union, Tuple, Iterable
 
 from ._cluster_find import rank_cluster_map
-from ._plotting_methods import plot_fragmented_domain
-from parameters_and_setup import PATH_TO_INPUT_DATA, STRUCTURING_ELEMENT
+from parameters_and_setup import STRUCTURING_ELEMENT
+from plotting_methods import plot_fragmented_domain
+
 
 
 def fragment_combination(iterations: int) -> list:

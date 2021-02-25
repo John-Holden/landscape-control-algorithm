@@ -62,6 +62,7 @@ class ClusterFrag():
             return None
 
         connecting_patches = {}
+        # todo remove below, not needed
         R0_map = np.where(R0_map_raw > 1, R0_map_raw, 0)  # consider above threshold positions
 
         R0_map = R0_map * np.array(rank_cluster_map(R0_map, get_ranks=FRAGMENT_RANK)[0] > 0).astype(
@@ -103,12 +104,14 @@ class Scenario_test():
         path2_scenario = f'{species}_cg_{cg_factor}_beta_{beta_index}'
         path2_patch_data = f'connecting_patch_data/{path2_scenario}_iterations_{iterations}.json'
         path2_processed_R0_domain = f'processed_R0_maps/{path2_scenario}_processed_R0_map.npy'
+        path2_fragmented_R0_domain = f'fragmented_R0_domain/{path2_scenario}_fragmented_R0_domain.npy'
 
         self.path2_payoff_data = f'{path2_ensemble}/fragmentation_payoff_data/'
         self.payoff_save_name =   f'{self.path2_payoff_data}{path2_scenario}_iterations_{iterations}.pickle'
 
         try:
             self.R0_domain = np.load(f'{path2_ensemble}/{path2_processed_R0_domain}')  # load domain
+            self.R0_fragmented = np.load(f'{path2_ensemble}/{path2_fragmented_R0_domain}')  # load domain
             with open(f'{path2_ensemble}/{path2_patch_data}', 'r') as infile:  # load fragmentation data
                 connecting_patches = json.load(infile)
 

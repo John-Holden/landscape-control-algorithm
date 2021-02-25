@@ -1,0 +1,24 @@
+
+______Ensemble Parameters_______
+	 ensemble averaged metrics:  : ['R0_Histories']
+	 start time:  : 2021-01-30 16:21:43
+	 dispersal model:  : gaussian
+	 scale parameter $alpha$:  : 5 (m)
+	 dispersal constant $ell$:  : 1000 (m)
+	 infectious life-time $T$ : 50
+	 $I -> R$ transitions:  :  Exp 
+	 # core repeats:  : 2
+	 initial epicenter radius:  : 0
+	 percolation boundary:  : False
+	 rhos : [ 0.      0.0025  0.005   0.0075  0.01    0.0125  0.015   0.0175  0.02
+  0.0225  0.025   0.0275  0.03    0.04    0.05    0.06    0.07    0.08
+  0.09    0.1   ] | 20
+	 betas : [  0.00000000e+00   2.00000000e-05   4.00000000e-05   6.00000000e-05
+   8.00000000e-05   1.00000000e-04   1.20000000e-04   1.40000000e-04
+   1.60000000e-04   1.80000000e-04   2.00000000e-04   2.20000000e-04
+   2.40000000e-04   2.60000000e-04   2.80000000e-04   3.00000000e-04] | 16
+
+______Out_______
+	elapsed time : 3 (Hrs): 32 (mins): 52 (s)
+	Notes : '...' Ensemble size : 100
+ Ensemble size : 100Ensemble size : 100

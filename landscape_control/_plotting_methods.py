@@ -167,32 +167,80 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
     return
 
 
-def plot_payoff_efficiencies(payoff_store: dict):
+def append_payoffs(payoff_store:dict, return_top:Union[None, int]=None):
     """
-    Plot payoff found from scenario test.
+    Descend into payoff dictionary and find scenario pay-off ratios.
     """
     N_saved = []
     N_culled = []
+
+    epi_centers = [] if return_top is not None and isinstance(return_top, int) else None
+    combinations = [] if epi_centers is not None else None
+
     for epic, payoffs in payoff_store.items():
         # Iterate through epicenters
         for comb, result in payoffs.items():
             # Iterate through each result in epicenters
             N_saved.append(result['Ns'])
             N_culled.append(result['Nc'])
+            if return_top:
+                epi_centers.append(epic)
+                combinations.append(comb)
 
+    N_saved = np.array(N_saved)
+    N_culled = np.array(N_culled)
+    payoff = N_saved / N_culled
+
+
+    order = np.argsort(payoff)
+    payoff = payoff[order]
+    N_saved = N_saved[order]
+    N_culled = N_culled[order]
+
+    if return_top:
+        epi_centers = np.array(epi_centers)
+        combinations = np.array(combinations)
+        epi_centers = epi_centers[order]
+        combinations = combinations[order]
+        payoff_ = np.unique(payoff)
+        payoff_ = payoff_[-return_top]
+        for result in [payoff_]:
+            ind = np.where(payoff == result)
+            epi_centers= epi_centers[ind]
+            combinations = combinations[ind]
+
+    return payoff, N_saved, N_culled, epi_centers, combinations
+
+
+def plot_payoff_efficiencies_1(payoff_store: dict, show_top:Union[None, int] = None):
+    """
+    Plot payoff found from scenario test.
+    """
+    payoff = append_payoffs(payoff_store, return_top=1)[0]
+
+    if show_top is not None and isinstance(show_top, int):
+       payoff = payoff[:show_top]
+
+    plt.title('payoff2')
+    plt.plot(np.arange(len(payoff), 0, -1), payoff)
+    plt.xlabel('rank')
+    plt.ylabel('Ns/Nc')
+    plt.yscale('log')
+    plt.xscale('log')
+    plt.show()
+    return
+
+
+def plot_payoff_efficiencies_2(payoff_store: dict):
+    """
+    Plot payoff found from scenario test.
+    """
+    N_saved, N_culled, _ = append_payoffs(payoff_store)
     print('len ns', len(N_saved))
     print('len unique elements ', len(np.unique(N_saved)))
-
     plt.title('payoff1')
     plt.scatter(N_culled, N_saved)
     plt.xlabel('N culled')
     plt.ylabel('N saved')
-    plt.show()
-
-    plt.title('payoff2')
-    N_saved, N_culled = np.array(N_saved), np.array(N_culled)
-    plt.scatter(range(len(N_culled)), np.sort(N_saved / N_culled))
-    plt.xlabel('rank')
-    plt.ylabel('Ns/Nc')
     plt.show()
     return

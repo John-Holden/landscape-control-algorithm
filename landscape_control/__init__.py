@@ -105,16 +105,20 @@ class ScenarioTest:
         except Exception as exc:
             sys.exit(f'Error, file(s) not found. Have you run the fragmentation algorithm ? \n {exc}')
 
-        self.payoffs = {}
         self.species = species
+        self.scenario_store = {}
         self.cg_factor = cg_factor
         self.iterations = iterations
         self.beta_index = beta_index
+        self.population_size = len(np.where(self.R0_domain)[0])
 
-        from ._scenario_test import fragment_combination, get_epi_c, domain_at_iteration, get_epicenter_payoff
+        from ._scenario_test import fragment_combination, get_epi_c, domain_at_iteration, get_epicenter_payoff, \
+            add_rank_to_dict
+
         from .plotting_methods import plot_fragmented_domain, plot_R0_clusters
 
         self.get_epi_c = get_epi_c
+        self.add_rank_to_dict = add_rank_to_dict
         self.domain_at_iteration = domain_at_iteration
         self.get_epicenter_payoff = get_epicenter_payoff
         self.fragment_combination = fragment_combination
@@ -127,12 +131,9 @@ class ScenarioTest:
         For a sample of random epicenters, find the payoff : N_saved / N_culled
         """
 
-        num_results = 0
-
-        ranks = []
-        payoffs = []
-        epi_centers = []
-        relevant_lines = []
+        payoffs_list = []
+        epi_center_list = []
+        relevant_lines_list = []
 
         containment_combos = self.fragment_combination(self.iterations)
         epi_centers = self.get_epi_c(self.R0_domain, self.fragmented_domain)
@@ -140,33 +141,37 @@ class ScenarioTest:
         for i, epi_c in enumerate(epi_centers):
             print(f'{i}/ {len(epi_centers)}')
             # Iterate through each epicenter
-            assert epi_c not in self.payoffs  # ignore edge-case epicenters that already exist
-            self.payoffs[epi_c] = {}
+            assert epi_c not in self.scenario_store  # ignore edge-case epicenters that already exist
+            self.scenario_store[epi_c] = {}
             for c, comb in enumerate(containment_combos):
                 # Iterate through all combinations of containment
                 R0_fragmented, fragment_lines = self.domain_at_iteration(self.R0_domain, self.fragmented_domain, comb)
 
                 if R0_fragmented is None:
-                    self.payoffs[epi_c][comb] = None
                     continue
 
                 fragment_lines, relevant_lines, num_rem, num_culled = self.get_epicenter_payoff(epi_c, R0_fragmented, fragment_lines)
 
-                if relevant_lines in self.payoffs[epi_c]:
+                if relevant_lines in self.scenario_store[epi_c]:
                     if plot_check and c % 50 == 0:
                         striped = [i for i in comb if i not in relevant_lines]
                         plt.title(f'combination : {comb} | relevant lines : {relevant_lines} -> strip : {striped}')
                         self.plot_fragmented_domain(fragment_lines, np.copy(self.R0_domain), epi_c, show_text=True)
                     continue
 
-                self.payoffs[epi_c][relevant_lines] = {'Ns': num_rem, 'Nc': num_culled}
-                num_results += 1
+                num_saved = self.population_size - num_rem
+                self.scenario_store[epi_c][relevant_lines] = {'Ns': num_saved, 'Nr': num_rem, 'Nc': num_culled}
+                relevant_lines_list.append(relevant_lines)
+                payoffs_list.append(num_saved / num_culled)
+                epi_center_list.append(epi_c)
+
+        self.scenario_store = self.add_rank_to_dict(payoffs_list, epi_center_list, relevant_lines_list, self.scenario_store)
 
         if not os.path.exists(f'{self.path2_payoff_data}'):
             os.mkdir(f'{self.path2_payoff_data}')
 
         with open(self.payoff_save_name, 'wb') as handle:
-            pickle.dump(self.payoffs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self.scenario_store, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        return self.payoffs, num_results
+        return self.scenario_store, len(payoffs_list)
 

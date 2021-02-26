@@ -17,17 +17,17 @@ def run_scenario_test():
 
 
 def load_and_plot_scenario():
-    import pickle
-    path2_dat = f'./data_store/landscape_control_package/fragmentation_payoff_data/fex_cg_5_beta_1_iterations_10.pickle'
+    import pickle, os
+    path2_dat = os.getcwd()
+    path2_dat += '/data_store/landscape_control_package/fragmentation_payoff_data/Fex_cg_5_beta_1_iterations_10.pickle'
     file = open(f"{path2_dat}", 'rb')
     payoff_dat = pickle.load(file)
-    # plot_payoff_efficiencies_1(payoff_dat )
-    payoff, N_saved, N_culled, epi_centers, combinations = append_payoffs(payoff_dat, return_top=1)
-    print(combinations)
+    plot_payoff_efficiencies_1(payoff_dat)
 
 
 if __name__ == '__main__':
     # run_fragmentation()
-    run_scenario_test()
+    # run_scenario_test()
+    load_and_plot_scenario()
 
 

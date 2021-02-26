@@ -94,3 +94,19 @@ def get_epicenter_payoff(epicenter: tuple, R0_fragmented: np.ndarray,
     return fragment_lines, tuple(relevant_lines), num_patches_removed, num_culled
 
 
+def add_rank_to_dict(payoffs: list, epicenters: list, relevant_lines: list, scenario_store: dict):
+    """
+    Rank all the payoff results and append to scenario_store dictionary.
+    """
+    payoffs = np.array(payoffs)
+    epicenters = np.array(epicenters)
+    relevant_lines = np.array(relevant_lines)
+
+    ranked_args = np.argsort(payoffs)[::-1]
+    epicenters = epicenters[ranked_args]
+    relevant_lines = relevant_lines[ranked_args]
+    ranks = range(1, len(relevant_lines)+1)
+    for epi, line, rank in zip(epicenters, relevant_lines, ranks):
+        scenario_store[tuple(epi)][line]['rank'] = rank
+
+    return scenario_store

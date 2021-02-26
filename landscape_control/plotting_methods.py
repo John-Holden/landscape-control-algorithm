@@ -167,7 +167,7 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
     return
 
 
-def append_payoffs(payoff_store:dict, return_top:Union[None, int]=None):
+def append_payoffs(payoff_store: dict, return_top: Union[None, int] = None):
     """
     Descend into payoff dictionary and find scenario pay-off ratios.
     """
@@ -186,9 +186,6 @@ def append_payoffs(payoff_store:dict, return_top:Union[None, int]=None):
 
             N_saved.append(result['Ns'])
             N_culled.append(result['Nc'])
-            if return_top:
-                epi_centers.append(epic)
-                combinations.append(comb)
 
     N_saved = np.array(N_saved)
     N_culled = np.array(N_culled)
@@ -199,17 +196,7 @@ def append_payoffs(payoff_store:dict, return_top:Union[None, int]=None):
     N_saved = N_saved[order]
     N_culled = N_culled[order]
 
-    if return_top:
-        epi_centers = np.array(epi_centers)
-        combinations = np.array(combinations)
-        epi_centers = epi_centers[order]
-        combinations = combinations[order]
-        payoff_ = np.unique(payoff)
-        payoff_ = payoff_[-return_top]
-        for result in [payoff_]:
-            ind = np.where(payoff == result)
-            epi_centers= epi_centers[ind]
-            combinations = combinations[ind]
+    #todo return top to plot ....
 
     return payoff, N_saved, N_culled, epi_centers, combinations
 

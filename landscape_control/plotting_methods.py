@@ -152,7 +152,7 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
 
     # Optional, show epicenter
     if epi_c is not None:
-        circle = plt.Circle((epi_c[1], epi_c[0]), 1.5, fc='black', ec="red")
+        circle = plt.Circle((epi_c[1], epi_c[0]), 0.5, fc='black', ec="red")
         plt.gca().add_patch(circle)
 
     # Optional, display fragmentation iteration next to spatial line
@@ -180,7 +180,10 @@ def append_payoffs(payoff_store:dict, return_top:Union[None, int]=None):
     for epic, payoffs in payoff_store.items():
         # Iterate through epicenters
         for comb, result in payoffs.items():
-            # Iterate through each result in epicenters
+            # Iterate through each result in
+            if result is None:
+                continue
+
             N_saved.append(result['Ns'])
             N_culled.append(result['Nc'])
             if return_top:
@@ -190,7 +193,6 @@ def append_payoffs(payoff_store:dict, return_top:Union[None, int]=None):
     N_saved = np.array(N_saved)
     N_culled = np.array(N_culled)
     payoff = N_saved / N_culled
-
 
     order = np.argsort(payoff)
     payoff = payoff[order]
@@ -223,6 +225,7 @@ def plot_payoff_efficiencies_1(payoff_store: dict, show_top:Union[None, int] = N
 
     plt.title('payoff2')
     plt.plot(np.arange(len(payoff), 0, -1), payoff)
+    plt.scatter(np.arange(len(payoff), 0, -1), payoff)
     plt.xlabel('rank')
     plt.ylabel('Ns/Nc')
     plt.yscale('log')

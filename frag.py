@@ -6,13 +6,13 @@ from landscape_control.plotting_methods import plot_payoff_efficiencies_1, appen
 
 def run_fragmentation():
     ensemble = EnsembleInfo('landscape_control_package')
-    cfrag = ClusterFrag(ensemble, cg_factor=5, beta_index=2, iterations=10)
+    cfrag = ClusterFrag(ensemble, cg_factor=5, beta_index=1, iterations=10)
     cfrag.execute(plot=True)
 
 
 def run_scenario_test():
-    scenario_test = ScenarioTest('landscape_control_package', beta_index=3, iterations=10)
-    payoffs, num = scenario_test.find_all_payoffs(epi_center_number=100, plot_check=False)
+    scenario_test = ScenarioTest('landscape_control_package', beta_index=1, iterations=10)
+    payoffs, num = scenario_test.find_all_payoffs(plot_check=False)
     plot_payoff_efficiencies_1(payoffs)
 
 
@@ -27,5 +27,7 @@ def load_and_plot_scenario():
 
 
 if __name__ == '__main__':
-    run_fragmentation()
+    # run_fragmentation()
+    run_scenario_test()
+
 

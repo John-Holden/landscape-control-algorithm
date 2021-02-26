@@ -3,6 +3,7 @@ import sys
 import json
 import pickle
 import datetime
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import ClassVar, Tuple
@@ -28,7 +29,8 @@ class ClusterFrag:
         from ._domain_processing import get_R0_map, process_R0_map
 
         if os.path.exists(self.path2_patch_data):  # Check if data already exists
-            print(f'\nWarning: data {self.path2_patch_data} already exists!')
+            msg = f'\n Overwriting:  {self.path2_patch_data}'
+            warnings.warn(msg)
         if os.path.exists(self.path2_R0_processed):  # load R0-map
             R0_processed = np.load(self.path2_R0_processed)
         else:  # generate R0-map from scratch, take threshold values of R0 and crop around the target cluster
@@ -84,76 +86,81 @@ class ClusterFrag:
 
 class ScenarioTest:
 
-    def __init__(self, ensemble_name:str, beta_index:int, cg_factor:int=5, species:str = 'fex', iterations:int=10):
+    def __init__(self, ensemble_name: str, beta_index: int, cg_factor: int = 5, species: str = 'Fex',
+                 iterations: int = 10):
+
         path2_ensemble = f'{PATH_TO_INPUT_DATA}/{ensemble_name}'
         path2_scenario = f'{species}_cg_{cg_factor}_beta_{beta_index}'
         path2_patch_data = f'connecting_patch_data/{path2_scenario}_iterations_{iterations}.json'
         path2_processed_R0_domain = f'processed_R0_maps/{path2_scenario}_processed_R0_map.npy'
-        path2_fragmented_R0_domain = f'fragmented_R0_domain/{path2_scenario}_fragmented_R0_domain.npy'
+        path2_fragmented_R0_domain = f'fragmented_R0_domain/{path2_scenario}_fragmented_domain.npy'
 
         self.path2_payoff_data = f'{path2_ensemble}/fragmentation_payoff_data/'
         self.payoff_save_name = f'{self.path2_payoff_data}{path2_scenario}_iterations_{iterations}.pickle'
 
         try:
             self.R0_domain = np.load(f'{path2_ensemble}/{path2_processed_R0_domain}')  # load domain
-            self.R0_fragmented = np.load(f'{path2_ensemble}/{path2_fragmented_R0_domain}')  # load domain
-            with open(f'{path2_ensemble}/{path2_patch_data}', 'r') as infile:  # load fragmentation data
-                connecting_patches = json.load(infile)
+            self.fragmented_domain = np.load(f'{path2_ensemble}/{path2_fragmented_R0_domain}')  # load domain
 
         except Exception as exc:
             sys.exit(f'Error, file(s) not found. Have you run the fragmentation algorithm ? \n {exc}')
 
-        self.connecting_patches = {}
-        self.all_culled_patches = np.zeros_like(self.R0_domain)
-        for iteration, indices in connecting_patches.items():
-            self.connecting_patches[int(iteration)] = (tuple(indices[0]), tuple(indices[1]))
-            self.all_culled_patches[self.connecting_patches[int(iteration)]] = int(iteration) + 1
-
-        self.iterations = iterations
+        self.payoffs = {}
         self.species = species
         self.cg_factor = cg_factor
+        self.iterations = iterations
         self.beta_index = beta_index
-        self.payoffs = {}
 
         from ._scenario_test import fragment_combination, get_epi_c, domain_at_iteration, get_epicenter_payoff
-        from .plotting_methods import plot_fragmented_domain
+        from .plotting_methods import plot_fragmented_domain, plot_R0_clusters
 
         self.get_epi_c = get_epi_c
         self.domain_at_iteration = domain_at_iteration
         self.get_epicenter_payoff = get_epicenter_payoff
         self.fragment_combination = fragment_combination
+
+        self.plot_R0_clusters = plot_R0_clusters
         self.plot_fragmented_domain = plot_fragmented_domain
 
-    def find_all_payoffs(self, epi_center_number: int = 1, plot_check: bool = False) -> Tuple[dict, int]:
+    def find_all_payoffs(self, plot_check: bool = False) -> Tuple[dict, int]:
         """
         For a sample of random epicenters, find the payoff : N_saved / N_culled
         """
 
+        num_results = 0
+
+        ranks = []
+        payoffs = []
+        epi_centers = []
+        relevant_lines = []
+
         containment_combos = self.fragment_combination(self.iterations)
-        epi_centers = self.get_epi_c(self.R0_domain, self.all_culled_patches, epi_center_number)
-        for index, epi_c in enumerate(epi_centers):
-            print(f'{index}/{epi_center_number}')
+        epi_centers = self.get_epi_c(self.R0_domain, self.fragmented_domain)
+
+        for i, epi_c in enumerate(epi_centers):
+            print(f'{i}/ {len(epi_centers)}')
             # Iterate through each epicenter
-            assert not epi_c in self.payoffs  # ignore edge-case epicenters that already exist
+            assert epi_c not in self.payoffs  # ignore edge-case epicenters that already exist
             self.payoffs[epi_c] = {}
-
-            for index, comb in enumerate(containment_combos):
+            for c, comb in enumerate(containment_combos):
                 # Iterate through all combinations of containment
-                R0_fragmented, fragment_lines = self.domain_at_iteration(self.R0_domain, self.connecting_patches,
-                                                                         iterations=comb)
+                R0_fragmented, fragment_lines = self.domain_at_iteration(self.R0_domain, self.fragmented_domain, comb)
 
-                relevant_lines, num_rem, num_culled = self.get_epicenter_payoff(epi_c, self.R0_domain, R0_fragmented,
-                                                                                fragment_lines)
+                if R0_fragmented is None:
+                    self.payoffs[epi_c][comb] = None
+                    continue
+
+                fragment_lines, relevant_lines, num_rem, num_culled = self.get_epicenter_payoff(epi_c, R0_fragmented, fragment_lines)
 
                 if relevant_lines in self.payoffs[epi_c]:
-                    if plot_check and index % 100 == 0:
+                    if plot_check and c % 50 == 0:
                         striped = [i for i in comb if i not in relevant_lines]
                         plt.title(f'combination : {comb} | relevant lines : {relevant_lines} -> strip : {striped}')
                         self.plot_fragmented_domain(fragment_lines, np.copy(self.R0_domain), epi_c, show_text=True)
                     continue
 
                 self.payoffs[epi_c][relevant_lines] = {'Ns': num_rem, 'Nc': num_culled}
-                index += 1
+                num_results += 1
 
         if not os.path.exists(f'{self.path2_payoff_data}'):
             os.mkdir(f'{self.path2_payoff_data}')
@@ -161,5 +168,5 @@ class ScenarioTest:
         with open(self.payoff_save_name, 'wb') as handle:
             pickle.dump(self.payoffs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-        return self.payoffs, index
+        return self.payoffs, num_results
 

@@ -1,9 +1,10 @@
 import numpy as np
-from landscape_control import ClusterFrag, ScenarioTest
-from parameters_and_setup import EnsembleInfo
-
 from typing import Type, Union
-from landscape_control.plotting_methods import plot_spatial_payoff_rank
+
+from parameters_and_setup import EnsembleInfo
+from landscape_control import ClusterFrag, ScenarioTest
+
+
 
 
 def run_fragmentation(ensemble_name:str, cg_factor:int, beta:int, iterations:int):

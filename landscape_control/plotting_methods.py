@@ -1,9 +1,14 @@
+import warnings
 import numpy as np
-from typing import Union
 import matplotlib.pyplot as plt
+from typing import Union, Iterable
+from matplotlib.colors import LinearSegmentedColormap
+
 from ._cluster_find import rank_cluster_map
 from parameters_and_setup import PATH_TO_INPUT_DATA
-from matplotlib.colors import LinearSegmentedColormap
+from landscape_control.exceptions import NoClustersDetcted
+
+
 
 pltParams = {'figure.figsize': (7.5, 5.5),
              'axes.labelsize': 15,
@@ -16,7 +21,7 @@ plt.rcParams.update(pltParams)
 
 def plot_R0_vs_rho_over_ensemble(ensemble_name):
     'Plot R0 vs Rho for beta values'
-    from ._domain_processing import linear_func
+    from .domain_processing import linear_func
     from scipy.optimize import curve_fit
 
     path_to_ensemble = f'{PATH_TO_INPUT_DATA}/{ensemble_name}'
@@ -34,24 +39,18 @@ def plot_R0_vs_rho_over_ensemble(ensemble_name):
 
     plt.plot([rhos[0], rhos[-1]], [1, 1], c='r', ls='--')
     plt.show()
+    return
 
 
-def plot_top_cluster_sizes_vs_beta(ensemble_name):
+def cluster_sizes_vs_beta(betas:Iterable, cluster_sizes:Iterable, cluster_rank:int = 1):
     """
     Plot how top cluster size varies with infectivity beta.
     """
-    path_to_ensemble = f'{PATH_TO_INPUT_DATA}/{ensemble_name}'
-    cluster_sizes = np.load(f'{path_to_ensemble}/cluster_size_vs_beta.npy')
-    print('cluster sizes', cluster_sizes)
-    betas = np.load(f'{path_to_ensemble}/betas.npy')
-    print([b for b in betas])
     fig, ax = plt.subplots()
-    ax.plot(betas, cluster_sizes, label=f'Gaussian dispersal 1km')
-    ax.plot([0.00014, 0.00014], [0, 2 * 10 ** 5])
+    ax.plot(betas, cluster_sizes)
     ax.scatter(betas, cluster_sizes)
     plt.xlabel(r'$\beta$')
-    plt.ylabel(r'Max cluster size $\mathrm{km}^2$')
-    plt.legend()
+    plt.ylabel(f"Rank {cluster_rank} cluster size km^2")
     plt.show()
     return
 
@@ -79,11 +78,19 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
     """
     if rank is not None and isinstance(rank, int):
         R0_map_background = np.array(R0_map > 0).astype(int)
-        R0_map = rank_cluster_map(R0_map, get_ranks=rank)[0]
-        assert len(np.unique(R0_map)) - 1 == rank, f'expected len {rank}, got {len(np.unique(R0_map)) - 1}'
+        R0_map, _, _ = rank_cluster_map(R0_map, get_ranks=rank)
         R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background
 
-    cluster_number = len(np.unique(R0_map)) - 1
+    if len(_) >= rank:
+        cluster_number = rank
+
+    elif len(_) < rank and len(_) > 0:
+        msg = f'\nError, expected {rank} clusters, only found {len(_)}'
+        warnings.warn(msg)
+        cluster_number = len(_)
+    else:
+        raise NoClustersDetcted
+
     colors = [f'C{i}' for i in range(len(np.unique(R0_map)) - 1)]
 
     if rank is not None and isinstance(rank, int):  # Plot back-ground as grey
@@ -112,7 +119,6 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
         plt.show()
 
     plt.close()
-    return
 
 
 def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, epi_c: Union[None, tuple] = None,
@@ -152,7 +158,7 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
 
     # Optional, show epicenter
     if epi_c is not None:
-        circle = plt.Circle((epi_c[1], epi_c[0]), 1.5, fc='black', ec="red")
+        circle = plt.Circle((epi_c[1], epi_c[0]), 0.5, fc='black', ec="red")
         plt.gca().add_patch(circle)
 
     # Optional, display fragmentation iteration next to spatial line
@@ -167,75 +173,60 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
     return
 
 
-def append_payoffs(payoff_store:dict, return_top:Union[None, int]=None):
+def append_payoffs(payoff_store: dict):
     """
-    Descend into payoff dictionary and find scenario pay-off ratios.
+    Descend into payoff dictionary and return a sorted array of payoff, number_saved, number_removed and number_culled.
     """
     N_saved = []
     N_culled = []
-
-    epi_centers = [] if return_top is not None and isinstance(return_top, int) else None
-    combinations = [] if epi_centers is not None else None
+    N_removed = []
 
     for epic, payoffs in payoff_store.items():
         # Iterate through epicenters
         for comb, result in payoffs.items():
-            # Iterate through each result in epicenters
+            # Iterate through each result in
+            if result is None:
+                continue
+
             N_saved.append(result['Ns'])
             N_culled.append(result['Nc'])
-            if return_top:
-                epi_centers.append(epic)
-                combinations.append(comb)
+            N_removed.append(result['Nr'])
 
     N_saved = np.array(N_saved)
     N_culled = np.array(N_culled)
-    payoff = N_saved / N_culled
+    N_removed = np.array(N_removed)
 
+    payoff = N_saved / N_culled
 
     order = np.argsort(payoff)
     payoff = payoff[order]
     N_saved = N_saved[order]
     N_culled = N_culled[order]
 
-    if return_top:
-        epi_centers = np.array(epi_centers)
-        combinations = np.array(combinations)
-        epi_centers = epi_centers[order]
-        combinations = combinations[order]
-        payoff_ = np.unique(payoff)
-        payoff_ = payoff_[-return_top]
-        for result in [payoff_]:
-            ind = np.where(payoff == result)
-            epi_centers= epi_centers[ind]
-            combinations = combinations[ind]
-
-    return payoff, N_saved, N_culled, epi_centers, combinations
+    return payoff, N_saved, N_culled, N_removed
 
 
-def plot_payoff_efficiencies_1(payoff_store: dict, show_top:Union[None, int] = None):
+def plot_payoff_efficiencies_1(payoff_store: dict):
     """
     Plot payoff found from scenario test.
     """
-    payoff = append_payoffs(payoff_store, return_top=1)[0]
+    payoff = append_payoffs(payoff_store)[0]
 
-    if show_top is not None and isinstance(show_top, int):
-       payoff = payoff[:show_top]
-
-    plt.title('payoff2')
+    plt.title('payoff1')
     plt.plot(np.arange(len(payoff), 0, -1), payoff)
+    plt.scatter(np.arange(len(payoff), 0, -1), payoff)
     plt.xlabel('rank')
     plt.ylabel('Ns/Nc')
     plt.yscale('log')
     plt.xscale('log')
     plt.show()
-    return
 
 
 def plot_payoff_efficiencies_2(payoff_store: dict):
     """
     Plot payoff found from scenario test.
     """
-    N_saved, N_culled, _ = append_payoffs(payoff_store)
+    _, N_saved, N_culled, _ = append_payoffs(payoff_store)
     print('len ns', len(N_saved))
     print('len unique elements ', len(np.unique(N_saved)))
     plt.title('payoff1')
@@ -243,4 +234,59 @@ def plot_payoff_efficiencies_2(payoff_store: dict):
     plt.xlabel('N culled')
     plt.ylabel('N saved')
     plt.show()
-    return
+
+
+def plot_spatial_payoff_rank(R0_domain:np.ndarray, payoff_store: dict, rank:int):
+    """
+    For a given scenario, plot the map of the containment/
+    """
+    rank_epi_c = None
+    rank_payoff = None
+    rank_cull_line = None
+    rank_cull_line_indices = None
+
+    for epi_c, results in payoff_store.items():
+        for cull_line, payoff in results.items():
+            if payoff['rank'] == rank:
+                rank_epi_c = epi_c
+                rank_payoff = payoff
+                rank_cull_line = cull_line
+                rank_cull_line_indices = payoff['frag_line_indices']
+                break
+
+    if rank_cull_line is None or rank_payoff is None or rank_epi_c is None:
+        msg = f'Did not find rank {rank} payoff data!'
+        warnings.warn(msg)
+        return
+
+    colors = ['white', 'C0', 'C1']
+    nbins = len(colors)
+    cmap_name = 'my_list'
+
+    print(f'rank {rank} \n | epicenter : {rank_epi_c}, cull lines : {rank_cull_line}, '
+          f'number saved : {rank_payoff["Ns"]}, number removed : {rank_payoff["Nr"]}, '
+          f'number culled : {rank_payoff["Nc"]}')
+
+    R0_domain_ = np.copy(R0_domain)
+    R0_domain[rank_cull_line_indices] = 0
+    R0_domain, _, ids = rank_cluster_map(R0_domain)
+    saved_ids = R0_domain[rank_epi_c[0], rank_epi_c[1]]
+
+    R0_domain_[rank_cull_line_indices] = 0
+    for id_ in ids:
+        if id_ == saved_ids:
+            continue
+        R0_domain_[np.where(R0_domain == id_)] = 1
+
+    R0_domain_[np.where(R0_domain == saved_ids)] = 2
+
+    for culled_ind in range(len(rank_cull_line_indices[0])):
+        row = rank_cull_line_indices[0][culled_ind]
+        col = rank_cull_line_indices[1][culled_ind]
+        plt.scatter(col, row, marker='x', color='r', s=75)
+
+    plt.scatter(rank_epi_c[1], rank_epi_c[0], marker='x', color='black', s=100)
+    cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
+    im = plt.imshow(R0_domain_, cmap=cm, alpha=0.80)
+    plt.colorbar(im)
+    plt.show()

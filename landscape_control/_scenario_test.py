@@ -1,4 +1,4 @@
-import random
+import math
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,7 +7,7 @@ from typing import Union, Tuple, Iterable
 
 from ._cluster_find import rank_cluster_map
 from parameters_and_setup import STRUCTURING_ELEMENT
-from plotting_methods import plot_fragmented_domain
+from .plotting_methods import plot_fragmented_domain, plot_R0_clusters
 
 
 
@@ -27,21 +27,30 @@ def fragment_combination(iterations: int) -> list:
     return frag_comb
 
 
-def get_epi_c(R0_domain:np.ndarray, all_culled_patches:np.ndarray, number: int) -> Tuple[tuple, tuple]:
+def get_epi_c(R0_domain: np.ndarray, fragmented_domain: np.ndarray) -> Tuple:
     """
     Update list of N random epicenters
     """
 
-    domain_indices = np.where(R0_domain * np.where(all_culled_patches, 0, 1))
-    randomise_index = random.sample(range(0, len(domain_indices[0])), number)
+    fragmented, _, ids = rank_cluster_map(R0_domain * np.logical_not(fragmented_domain))
+    epicenters = []
+    for id_ in ids:
+        cluster_indices = np.where(fragmented == id_)
+        row_epi = cluster_indices[0].sum() / len(cluster_indices[0])
+        col_epi = cluster_indices[1].sum() / len(cluster_indices[0])
+        potential_row_index = cluster_indices[0] - row_epi  # find closest patch (by row) to the cluster COM
+        potential_col_index = cluster_indices[1] - col_epi  # find closest patch (by row) to the cluster COM
+        potential_index = np.sqrt(potential_row_index**2 + potential_col_index**2)
+        row_epi = cluster_indices[0][np.argmin(potential_index)]
+        col_epi = cluster_indices[1][np.argmin(potential_index)]
+        assert fragmented[row_epi, col_epi] == id_, f'Error, expected {id_} found {fragmented[row_epi, col_epi]}'
+        epicenters.append((row_epi, col_epi))
 
-    epi_c = [domain_indices[0][randomise_index],
-             domain_indices[1][randomise_index]]
-
-    return tuple((i, j) for i, j in zip(epi_c[0], epi_c[1]))
+    return tuple(epicenters)
 
 
-def domain_at_iteration(R0_domain:np.ndarray, connecting_patches:dict, iterations: Union[int, Iterable]) -> Tuple[np.ndarray, np.ndarray]:
+def domain_at_iteration(R0_domain: np.ndarray, fragmented_domain: np.ndarray,
+                        iterations: Union[int, Iterable]) -> Tuple[Union[None, np.ndarray], np.ndarray]:
     """
     Find fragmented domain @ given iteration
     """
@@ -51,24 +60,23 @@ def domain_at_iteration(R0_domain:np.ndarray, connecting_patches:dict, iteration
 
     R0_fragmented = np.copy(R0_domain)
     for iteration in iterations:
-        R0_fragmented[connecting_patches[iteration - 1]] = 0
-        fragment_lines[connecting_patches[iteration - 1]] = iteration
+        R0_fragmented = R0_fragmented * np.logical_not(fragmented_domain == iteration)
+        fragment_lines += np.where(fragmented_domain == iteration, iteration, 0)
 
-    return rank_cluster_map(R0_fragmented)[0], fragment_lines
+    R0_fragmented, _, _ = rank_cluster_map(R0_fragmented)
+
+    if len(_) == len(iterations) + 1:  # lines broke the cluster as expected
+        return R0_fragmented, fragment_lines
+
+    return None, fragment_lines
 
 
-def get_epicenter_payoff(epicenter: tuple, R0_domain:np.ndarray, R0_fragmented: np.ndarray,
-                         fragment_lines: np.ndarray) -> Tuple[np.ndarray, int, int]:
+def get_epicenter_payoff(epicenter: tuple, R0_fragmented: np.ndarray,
+                         fragment_lines: np.ndarray) -> Tuple[np.ndarray, tuple, int, int]:
     """
     Find the payoff for a single fragmentation combination
     """
     target = R0_fragmented[epicenter[0], epicenter[1]]
-
-    if not target:
-        plt.title('error')
-        plot_fragmented_domain(fragment_lines, np.copy(R0_domain), epicenter, show_text=True)
-
-    assert target, 'Error, not expecting a zero-valued cluster-target.'
 
     target = np.where(R0_fragmented == target)
     num_patches_removed = len(target[0])
@@ -77,12 +85,28 @@ def get_epicenter_payoff(epicenter: tuple, R0_domain:np.ndarray, R0_fragmented: 
 
     bd_target = binary_dilation(arr_mask, structure=STRUCTURING_ELEMENT)
 
-    relevant_lines = fragment_lines[np.where(np.logical_and(bd_target, fragment_lines))]
-    relevant_lines = np.unique(relevant_lines)
-    relevant_lines = [int(line) for line in relevant_lines]
+    fragment_lines = np.logical_and(fragment_lines, bd_target) * fragment_lines
 
-    num_culled = [len(np.where(fragment_lines == i)[0]) for i in relevant_lines]
+    relevant_lines = np.unique(fragment_lines)
+    relevant_lines = [int(line) for line in relevant_lines if line != 0]
+    num_culled = len(np.where(fragment_lines)[0])
 
-    return tuple(relevant_lines), num_patches_removed, sum(num_culled)
+    return fragment_lines, tuple(relevant_lines), num_patches_removed, num_culled
 
 
+def add_rank_to_dict(payoffs: list, epicenters: list, relevant_lines: list, scenario_store: dict):
+    """
+    Rank all the payoff results and append to scenario_store dictionary.
+    """
+    payoffs = np.array(payoffs)
+    epicenters = np.array(epicenters)
+    relevant_lines = np.array(relevant_lines)
+
+    ranked_args = np.argsort(payoffs)[::-1]
+    epicenters = epicenters[ranked_args]
+    relevant_lines = relevant_lines[ranked_args]
+    ranks = range(1, len(relevant_lines)+1)
+    for epi, line, rank in zip(epicenters, relevant_lines, ranks):
+        scenario_store[tuple(epi)][line]['rank'] = rank
+
+    return scenario_store

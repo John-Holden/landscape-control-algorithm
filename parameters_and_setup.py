@@ -43,6 +43,7 @@ class EnsembleInfo:   # High level struct, holds all ensemble info
         self.path2_R0_raw = f'{self.path_to_ensemble}/processed_R0_maps'
         self.path2_R0_processed = f'{self.path_to_ensemble}/fragmented_R0_domain'
         self.path2_culled_indices = f'{self.path_to_ensemble}/connecting_patch_data'
+        self.path2_payoff_data = f'{self.path_to_ensemble}/fragmentation_payoff_data'
 
         # if not present, init directories
         if not os.path.exists(self.path2_R0_raw):
@@ -50,6 +51,9 @@ class EnsembleInfo:   # High level struct, holds all ensemble info
 
         if not os.path.exists(self.path2_R0_processed):
             os.mkdir(self.path2_R0_processed)
+
+        if not os.path.exists(self.path2_payoff_data):
+            os.mkdir(self.path2_payoff_data)
 
         if not os.path.exists(self.path2_culled_indices):
             os.mkdir(self.path2_culled_indices)

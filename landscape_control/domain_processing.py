@@ -1,5 +1,8 @@
+import os
+import warnings
 import numpy as np
-from typing import Iterable, Union
+from typing import Iterable, Union, Type
+from parameters_and_setup import EnsembleInfo
 from scipy.optimize import curve_fit
 from ._cluster_find import rank_cluster_map
 
@@ -78,34 +81,40 @@ def process_R0_map(R0_map_raw:np.ndarray, get_cluster:int, threshold:Union[int, 
     return R0_map
 
 
-# todo integrate get_clusters_over_betas with class
-# def get_clusters_over_betas(ensemble_name:str, cluster_ranks:int, coarse_grain_level:int,
-#                             save:bool, plot:bool) -> np.ndarray:
-#     """
-#     For each value of beta, find the top N ranked cluster size(s). Return an array of cluster sizes vs beta..
-#     """
-#     ash_ensemble = EnsembleInfo(ensemble_name=ensemble_name)  # initialise domain structures
-#     species_distribution_map = coarse_grain(domain=ash_ensemble.raw_data, cg_factor=coarse_grain_level)
-#     cluster_sizes = [None] * len(ash_ensemble.betas)
-#     print(f'RHOS : {ash_ensemble.rhos} | {len(ash_ensemble.rhos)}')
-#     for beta_index in range(len(ash_ensemble.betas)):
-#         R0_vs_rho = ash_ensemble.R0_vs_rho_beta[beta_index]
-#         R0_map = get_R0_gradient_fitting(species_distribution_map=species_distribution_map, rhos=ash_ensemble.rhos,
-#                                              R0_v_rho_mapping=R0_vs_rho)
-#
-#         ash_clustering = Cluster_sturct(R0_map=R0_map)  # init cluster class
-#         ash_clustering.apply_R0_threshold(R0_threshold=1)  # negate below threshold points
-#         ash_clustering.label_connected()  # label connected points
-#         ranked_cluster_map = ash_clustering.rank_R0_cluster_map(rank_N=cluster_ranks)  # rank top N clusters
-#         cluster_sizes[beta_index] = len(np.where(ranked_cluster_map)[0]) * coarse_grain_level**2
-#
-#         if plot:
-#             plt.title(f'Betas : {ash_ensemble.betas[beta_index]}')
-#             im = plt.imshow(ranked_cluster_map)
-#             plt.colorbar(im)
-#             plt.show()
-#
-#     if save: # save cluster size in units km^2
-#         np.save(f'{ash_ensemble.path_to_ensemble}/cluster_size_vs_beta', cluster_sizes)
-#
-#     return cluster_sizes
+def get_clusters_over_betas(ensemble:Type[EnsembleInfo], cg_factor:int = 5, get_rank:int = 1,
+                            save:bool = False, plot_output:bool = False, plot_clusters:bool = False) -> np.ndarray:
+    """
+    For each value of beta, find the top N ranked cluster size(s). Return an array of cluster sizes vs beta..
+    """
+    from landscape_control.plotting_methods import plot_R0_clusters
+
+    species_distribution_map = coarse_grain(domain=ensemble.raw_data, cg_factor=cg_factor)
+    cluster_sizes = [None] * len(ensemble.betas)
+    print(f'RHOS : {ensemble.rhos} | {len(ensemble.rhos)}')
+    for beta_index in range(len(ensemble.betas)):
+        R0_vs_rho = ensemble.R0_vs_rho_beta[beta_index]
+        R0_map = get_R0_gradient_fitting(species_distribution_map=species_distribution_map, rhos=ensemble.rhos,
+                                             R0_v_rho_mapping=R0_vs_rho)
+
+        if R0_map.max() < 1:
+            cluster_sizes[beta_index] = 0
+            continue
+
+        R0_map, sizes, _ = rank_cluster_map(R0_map > 1)
+        cluster_sizes[beta_index] = sizes[get_rank - 1]
+
+        if plot_clusters:
+            plot_R0_clusters(R0_map, rank=10)
+
+    if plot_output:
+        from landscape_control.plotting_methods import cluster_sizes_vs_beta
+        cluster_sizes_vs_beta(ensemble.betas, cluster_sizes)
+
+    if save: # save cluster size in units km^2
+        if os.path.exists(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta.npy'):
+            msg = f'\n Overwriting data for : {ensemble.path_to_ensemble}/cluster_size_vs_beta'
+            warnings.warn(msg), 'done'
+
+        np.save(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta', cluster_sizes)
+
+    return cluster_sizes

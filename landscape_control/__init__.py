@@ -26,7 +26,7 @@ class ClusterFrag:
         self.R0_vs_rho = ensemble_info.R0_vs_rho_beta[beta_index]
 
     def execute(self, plot: bool = False):
-        from ._domain_processing import get_R0_map, process_R0_map
+        from .domain_processing import get_R0_map, process_R0_map
 
         if os.path.exists(self.path2_patch_data):  # Check if data already exists
             msg = f'\n Overwriting:  {self.path2_patch_data}'
@@ -91,12 +91,15 @@ class ScenarioTest:
 
         path2_ensemble = f'{PATH_TO_INPUT_DATA}/{ensemble_name}'
         path2_scenario = f'{species}_cg_{cg_factor}_beta_{beta_index}'
-        path2_patch_data = f'connecting_patch_data/{path2_scenario}_iterations_{iterations}.json'
         path2_processed_R0_domain = f'processed_R0_maps/{path2_scenario}_processed_R0_map.npy'
         path2_fragmented_R0_domain = f'fragmented_R0_domain/{path2_scenario}_fragmented_domain.npy'
 
         self.path2_payoff_data = f'{path2_ensemble}/fragmentation_payoff_data/'
         self.payoff_save_name = f'{self.path2_payoff_data}{path2_scenario}_iterations_{iterations}.pickle'
+
+
+        if not os.path.exists(f'{self.path2_payoff_data}'):
+            os.mkdir(f'{self.path2_payoff_data}')
 
         try:
             self.R0_domain = np.load(f'{path2_ensemble}/{path2_processed_R0_domain}')  # load domain
@@ -160,15 +163,14 @@ class ScenarioTest:
                     continue
 
                 num_saved = self.population_size - num_rem
-                self.scenario_store[epi_c][relevant_lines] = {'Ns': num_saved, 'Nr': num_rem, 'Nc': num_culled}
+                self.scenario_store[epi_c][relevant_lines] = {'Ns': num_saved, 'Nr': num_rem, 'Nc': num_culled,
+                                                              'frag_line_indices':np.where(fragment_lines)}
+
                 relevant_lines_list.append(relevant_lines)
                 payoffs_list.append(num_saved / num_culled)
                 epi_center_list.append(epi_c)
 
         self.scenario_store = self.add_rank_to_dict(payoffs_list, epi_center_list, relevant_lines_list, self.scenario_store)
-
-        if not os.path.exists(f'{self.path2_payoff_data}'):
-            os.mkdir(f'{self.path2_payoff_data}')
 
         with open(self.payoff_save_name, 'wb') as handle:
             pickle.dump(self.scenario_store, handle, protocol=pickle.HIGHEST_PROTOCOL)

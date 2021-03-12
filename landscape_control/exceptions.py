@@ -4,13 +4,10 @@ from parameters_and_setup import PATH_TO_EXCEPTIONS
 
 
 class ClustersDidNotFragmentError(Exception):
-
     def __init__(self, msg='Error, clusters did not fragment as expected"'):
         self.msg = msg
-
     def __str__(self):
         return self.msg
-
 
 class ClustersDidNotFragmentSave(Exception):
 
@@ -55,3 +52,9 @@ class ClustersDidNotFragmentSave(Exception):
         np.save(f'{PATH_TO_EXCEPTIONS}e_pre_connected_map_{TIMESTAMP}', self.R0_discon)
         np.save(f'{PATH_TO_EXCEPTIONS}e_post_connected_map_{TIMESTAMP}', self.R0_connect)
         np.save(f'{PATH_TO_EXCEPTIONS}e_patches_detected_{TIMESTAMP}', self.connector_patches)
+
+class NoClustersDetcted(Exception):
+    def __init__(self, msg='Error, No clusters were detected!'):
+        self.msg = msg
+    def __str__(self):
+        return self.msg

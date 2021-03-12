@@ -1,6 +1,11 @@
+import os
+import warnings
 import numpy as np
-from typing import Iterable, Union, Any
+
 from .plotting_methods import plot_R0_clusters
+
+from typing import Iterable, Union, Any
+from parameters_and_setup import EnsembleInfo
 from scipy.optimize import curve_fit
 from ._cluster_find import rank_cluster_map
 
@@ -89,28 +94,37 @@ def process_R0_map(R0_map_raw: np.ndarray, get_cluster: int, threshold: Union[in
     return R0_map
 
 
-def get_clusters_over_betas(ensemble: Any,  cluster_ranks: int = 1, coarse_grain_level: int = 5,
-                            plot_maps : bool = False, save : bool = False) -> np.ndarray:
+def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1,
+                            save: bool = False, plot_output: bool = False, plot_clusters: bool = False) -> np.ndarray:
     """
     For each value of beta, find the top N ranked cluster size(s). Return an array of cluster sizes vs beta..
     """
-
-    species_distribution_map = coarse_grain(domain=ensemble.raw_data, cg_factor=coarse_grain_level)
+    species_distribution_map = coarse_grain(domain=ensemble.raw_data, cg_factor=cg_factor)
     cluster_sizes = np.zeros(len(ensemble.betas))
 
     for beta_index in range(len(ensemble.betas)):
         R0_vs_rho = ensemble.R0_vs_rho_beta[beta_index]
         R0_map = get_R0_gradient_fitting(species_distribution_map, ensemble.rhos, R0_vs_rho)
 
-        R0_map = np.where(R0_map > 1, R0_map, 0)
-        R0_map, sizes, _ = rank_cluster_map(R0_map, cluster_ranks)
-        cluster_sizes[beta_index] = sizes[cluster_ranks - 1] * coarse_grain_level**2
+        if R0_map.max() < 1:
+            cluster_sizes[beta_index] = 0
+            continue
 
-        if plot_maps:
+        R0_map, sizes, _ = rank_cluster_map(R0_map > 1)
+        cluster_sizes[beta_index] = sizes[get_rank - 1]
 
-            plot_R0_clusters(R0_map, rank=cluster_ranks, save=True, save_name=f'{beta_index}')
+        if plot_clusters:
+            plot_R0_clusters(R0_map, rank=10)
 
-    if save:  # save cluster size in units km^2
+    if plot_output:
+        from landscape_control.plotting_methods import cluster_sizes_vs_beta
+        cluster_sizes_vs_beta(ensemble.betas, cluster_sizes)
+
+    if save: # save cluster size in units km^2
+        if os.path.exists(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta.npy'):
+            msg = f'\n Overwriting data for : {ensemble.path_to_ensemble}/cluster_size_vs_beta'
+            warnings.warn(msg), 'done'
+
         np.save(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta', cluster_sizes)
 
     return cluster_sizes

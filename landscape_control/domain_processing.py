@@ -1,7 +1,10 @@
 import os
 import warnings
 import numpy as np
-from typing import Iterable, Union, Type
+
+from .plotting_methods import plot_R0_clusters
+
+from typing import Iterable, Union, Any
 from parameters_and_setup import EnsembleInfo
 from scipy.optimize import curve_fit
 from ._cluster_find import rank_cluster_map
@@ -27,10 +30,12 @@ def get_R0_gradient_fitting(species_distribution_map: np.ndarray, rhos: np.ndarr
     return species_distribution_map * popt[0]
 
 
-def coarse_grain(domain, cg_factor) -> 'float type, arr[n x m]':
+def coarse_grain(domain, cg_factor) -> np.ndarray:
     """
     Re-scale original dataset to a given granularity, re-shape to:
         cg_factor km^2 x cg_factor km^2
+
+    :return re-scaled array
     """
     if 1 in np.isnan(domain):
         domain = np.where(np.isnan(domain), 0, domain)
@@ -55,8 +60,8 @@ def coarse_grain(domain, cg_factor) -> 'float type, arr[n x m]':
     return cg_arr
 
 
-def get_R0_map(raw_species_data:np.ndarray, R0_vs_rho:np.ndarray,
-               rhos:np.ndarray, coarse_grain_factor:Union[None, int]=None) -> np.ndarray:
+def get_R0_map(raw_species_data: np.ndarray, R0_vs_rho: np.ndarray,
+               rhos: np.ndarray, coarse_grain_factor: Union[None, int]=None) -> np.ndarray:
     """
     Process a single domain, for one beta value, and return R0 map.
     """
@@ -69,7 +74,15 @@ def get_R0_map(raw_species_data:np.ndarray, R0_vs_rho:np.ndarray,
     return get_R0_gradient_fitting(raw_species_data_cg, rhos, R0_vs_rho)
 
 
-def process_R0_map(R0_map_raw:np.ndarray, get_cluster:int, threshold:Union[int, float]=1) -> np.ndarray:
+def trim_domain(domain: np.ndarray):
+    """Find bounds around the cluster target and strip all trivial points surrounding."""
+    domain_indices = np.where(domain)
+    domain_indices = [min(domain_indices[0]) - 2, max(domain_indices[0]) + 2, min(domain_indices[1]) - 2,
+                      max(domain_indices[1]) + 2]
+    return domain[domain_indices[0]:domain_indices[1], domain_indices[2]: domain_indices[3]]  # trim domain and save.
+
+
+def process_R0_map(R0_map_raw: np.ndarray, get_cluster: int, threshold: Union[int, float] = 1) -> np.ndarray:
     """
     Strip patches below the threshold, 1 by default and return the cluster target. The domain is also cropped around the
     target cluster.
@@ -86,20 +99,17 @@ def process_R0_map(R0_map_raw:np.ndarray, get_cluster:int, threshold:Union[int, 
     return R0_map
 
 
-def get_clusters_over_betas(ensemble:Type[EnsembleInfo], cg_factor:int = 5, get_rank:int = 1,
-                            save:bool = False, plot_output:bool = False, plot_clusters:bool = False) -> np.ndarray:
+def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1,
+                            save: bool = False, plot_output: bool = False, plot_clusters: bool = False) -> np.ndarray:
     """
     For each value of beta, find the top N ranked cluster size(s). Return an array of cluster sizes vs beta..
     """
-    from landscape_control.plotting_methods import plot_R0_clusters
-
     species_distribution_map = coarse_grain(domain=ensemble.raw_data, cg_factor=cg_factor)
-    cluster_sizes = [None] * len(ensemble.betas)
-    print(f'RHOS : {ensemble.rhos} | {len(ensemble.rhos)}')
+    cluster_sizes = np.zeros(len(ensemble.betas))
+
     for beta_index in range(len(ensemble.betas)):
         R0_vs_rho = ensemble.R0_vs_rho_beta[beta_index]
-        R0_map = get_R0_gradient_fitting(species_distribution_map=species_distribution_map, rhos=ensemble.rhos,
-                                             R0_v_rho_mapping=R0_vs_rho)
+        R0_map = get_R0_gradient_fitting(species_distribution_map, ensemble.rhos, R0_vs_rho)
 
         if R0_map.max() < 1:
             cluster_sizes[beta_index] = 0

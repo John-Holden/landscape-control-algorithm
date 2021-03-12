@@ -5,7 +5,8 @@ from typing import Union, Tuple, List, Iterable
 
 from parameters_and_setup import STRUCTURING_ELEMENT
 
-def rank_cluster_map(R0_map:np.ndarray, get_ranks: Union[None, int, Iterable] = None) -> Tuple[np.ndarray, List, List]:
+
+def rank_cluster_map(R0_map: np.ndarray, get_ranks: Union[None, int, Iterable] = None) -> Tuple[np.ndarray, List, List]:
     """
     Find connected clusters and return rank-ordered size along with corresponding  id.
     If get ranks is an int, the rank upto and included the value `get_ranks' is returned.
@@ -27,7 +28,8 @@ def rank_cluster_map(R0_map:np.ndarray, get_ranks: Union[None, int, Iterable] = 
                 cluster_ids = [cluster_ids[rank-1] for rank in get_ranks]
                 cluster_sizes = [cluster_sizes[rank-1] for rank in get_ranks]
                 ranks = get_ranks
-            except Exception:
+            except Exception as e:
+                print(e)
                 sys.exit(f'Error type {type(get_ranks)} is not iterable')
 
     R0_clusters_ = np.zeros_like(R0_clusters)
@@ -39,11 +41,12 @@ def rank_cluster_map(R0_map:np.ndarray, get_ranks: Union[None, int, Iterable] = 
     return R0_clusters_, cluster_sizes, cluster_ids
 
 
-def label_connected(R0_map:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def label_connected(R0_map: np.ndarray) -> Tuple:
     labeled, num_comp = label(R0_map, STRUCTURING_ELEMENT)
     return labeled, num_comp
 
-def cluster_freq_count(labeled:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+
+def cluster_freq_count(labeled: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Count the number of sites per cluster and rank-order for each unique cluster, find the corresponding number of
     elements.
@@ -56,6 +59,7 @@ def cluster_freq_count(labeled:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
     idx = np.argsort(cluster_counts)  # sort index by cluster size
     return cluster_counts[idx][::-1], cluster_ids[idx][::-1]  # return sorted
+
 
 class Cluster_sturct():
     def __init__(self, R0_map, neighbourhood=None):
@@ -77,7 +81,6 @@ class Cluster_sturct():
         self.cluster_ids = None
         self.cluster_count = None
         self.R0_applied_threshold = None
-
 
     def apply_R0_threshold(self, R0_threshold):
         self.R0_applied_threshold = np.where(self.R0_map > R0_threshold, self.R0_map, 0)

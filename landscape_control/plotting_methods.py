@@ -42,7 +42,7 @@ def plot_R0_vs_rho_over_ensemble(ensemble_name):
     return
 
 
-def cluster_sizes_vs_beta(betas:Iterable, cluster_sizes:Iterable, cluster_rank:int = 1):
+def cluster_sizes_vs_beta(betas: Iterable, cluster_sizes: Iterable, cluster_rank: int = 1):
     """
     Plot how top cluster size varies with infectivity beta.
     """

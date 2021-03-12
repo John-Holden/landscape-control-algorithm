@@ -1,0 +1,69 @@
+
+______Ensemble_______
+
+Notes : '...' 
+ 
+___Model parameters___
+	 - __module__ : parameters_and_settings
+	 - META_DATA : Exponentially distributed life-time dynamics : True
+	 - scale constant /alpha : 5 (m)
+	 - domain size L x L : 1000
+	 - infected_lt : 500
+	 - simulation run time : 500 (steps)
+	 - betas : [0.0001, 0.001]
+	 - rhos : [ 0.      0.0025  0.005   0.0075  0.01    0.0125  0.015   0.0175  0.02
+  0.0225  0.025   0.0275  0.03    0.04    0.05    0.06    0.07    0.08
+  0.09    0.1   ]
+	 - dispersal constant /ell : 195 (m)
+	 - epi_center : 500
+	 - initially infected : 1
+	 - initial epicenter radius : 0
+	 - dispersal model : gaussian
+	 - update_epi_c : <staticmethod object at 0x2b6599fe5a90>
+	 - assert_correct_dispersal : <staticmethod object at 0x2b6599fe59e8>
+	 - assert_config : <staticmethod object at 0x2b6599fe58d0>
+	 - __dict__ : <attribute '__dict__' of 'ModelParamSet' objects>
+	 - __weakref__ : <attribute '__weakref__' of 'ModelParamSet' objects>
+	 - __doc__ : None
+	 - ensemble_size : 5
+
+___Settings___
+	 - plot : False
+	 - show : True
+	 - save : False
+	 - plot_freq : 50
+	 - verb : 0
+	 - ext : .png
+	 - percolation_bcd : False
+	 - max_generation_bcd : 3
+	 - ensemble_config : <staticmethod object at 0x2b659a473128>
+
+___Metrics___
+	 - save_end_time : True
+	 - save_percolation : False
+	 - save_mortality_ratio : True
+	 - save_R0_history : True
+	 - save_time_series : False
+
+______Time elapsed_______
+core 7 | Simulation done in:  11 (Hrs): 44 (mins): 31 (s)
+core 15 | Simulation done in:  11 (Hrs): 49 (mins): 32 (s)
+core 1 | Simulation done in:  12 (Hrs): 8 (mins): 51 (s)
+core 14 | Simulation done in:  12 (Hrs): 9 (mins): 34 (s)
+core 16 | Simulation done in:  12 (Hrs): 11 (mins): 21 (s)
+core 19 | Simulation done in:  12 (Hrs): 17 (mins): 25 (s)
+core 6 | Simulation done in:  12 (Hrs): 19 (mins): 0 (s)
+core 12 | Simulation done in:  12 (Hrs): 19 (mins): 59 (s)
+core 8 | Simulation done in:  12 (Hrs): 21 (mins): 25 (s)
+core 20 | Simulation done in:  12 (Hrs): 23 (mins): 48 (s)
+core 3 | Simulation done in:  12 (Hrs): 25 (mins): 23 (s)
+core 5 | Simulation done in:  12 (Hrs): 26 (mins): 13 (s)
+core 4 | Simulation done in:  12 (Hrs): 31 (mins): 18 (s)
+core 2 | Simulation done in:  12 (Hrs): 32 (mins): 28 (s)
+core 9 | Simulation done in:  12 (Hrs): 33 (mins): 13 (s)
+core 11 | Simulation done in:  12 (Hrs): 33 (mins): 50 (s)
+core 13 | Simulation done in:  12 (Hrs): 54 (mins): 21 (s)
+core 10 | Simulation done in:  12 (Hrs): 58 (mins): 34 (s)
+core 18 | Simulation done in:  13 (Hrs): 41 (mins): 37 (s)
+core 17 | Simulation done in:  13 (Hrs): 43 (mins): 41 (s)
+Ensemble size : 100

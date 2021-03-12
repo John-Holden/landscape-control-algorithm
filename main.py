@@ -26,8 +26,10 @@ def load_and_plot_scenario():
 
 
 if __name__ == '__main__':
-    # run_fragmentation()
-    # run_scenario_test()
-    load_and_plot_scenario()
+    from landscape_control.plotting_methods import plot_top_cluster_sizes_vs_beta
+    from landscape_control._domain_processing import get_clusters_over_betas
+
+    ens = EnsembleInfo('landscape_control_package_upper_lower_bounds')
+    get_clusters_over_betas(ens, plot_maps=True)
 
 

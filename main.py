@@ -68,10 +68,13 @@ if __name__ == '__main__':
     # run_scenario_test()
     # payoff, processed_R0_domain = load_scenario_data(beta=2, iterations=10, ensemble_name='landscape_control_package')
     # plot_spatial_payoff_rank(processed_R0_domain, payoff, rank=100)
+    from landscape_control.domain_processing import threshold_domain
+    from landscape_control.plotting_methods import plot_R0_clusters
     from landscape_control.domain_processing import get_clusters_over_betas
     ensemble = EnsembleInfo('landscape_control_package')
-    get_clusters_over_betas(ensemble, plot_output=True, plot_clusters=True)
+    density=0.01
+    plot_R0_clusters(threshold_domain(ensemble.raw_data, density, 10), rank=10, title=rf"$\rho$ : {density}")
 
 
-
+    # get_clusters_over_betas(ensemble, plot_output=True, plot_clusters=True)
 

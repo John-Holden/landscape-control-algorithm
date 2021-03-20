@@ -1,5 +1,6 @@
 import warnings
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from typing import Union, Iterable
 from matplotlib.colors import LinearSegmentedColormap
@@ -15,6 +16,7 @@ pltParams = {'figure.figsize': (9., 6.5),
              'legend.fontsize': 'x-large'}
 
 plt.rcParams.update(pltParams)
+
 
 
 def plot_R0_vs_rho_over_ensemble(ensemble_name):
@@ -40,17 +42,20 @@ def plot_R0_vs_rho_over_ensemble(ensemble_name):
     return
 
 
-def cluster_sizes_vs_beta(betas: Iterable, cluster_sizes: Iterable, cluster_rank: int = 1):
+def cluster_sizes_vs_beta(betas: Iterable, cluster_sizes: Iterable, cluster_rank: int = 1, save: bool = False):
     """
     Plot how top cluster size varies with infectivity beta.
     """
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(betas, cluster_sizes)
     ax.scatter(betas, cluster_sizes)
+    plt.xticks(rotation=15)
     plt.xlabel(r'$\beta$')
+    plt.gcf().subplots_adjust(bottom=0.15)
     plt.ylabel(f"Rank {cluster_rank} cluster size km^2")
+    if save:
+        plt.savefig('cluster_sz_vs_beta', bbox_inches='tight')
     plt.show()
-    return
 
 
 def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarray],
@@ -71,7 +76,7 @@ def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarr
 
 def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: Union[None, tuple] = None,
                      show: bool = True, save: bool = False, save_name: Union[None, str] = None, ext: str = '.png',
-                     title: str = ""):
+                     title: str = "", flash: bool = False):
     """
     Rank and plot clusters
     """
@@ -105,9 +110,17 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
 
     cmap_name = 'my_list'
     cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
-    im = plt.imshow(R0_map, cmap=cm)
+    im = plt.imshow(R0_map, cmap=cm, interpolation='nearest')
     plt.colorbar(im)
     plt.title(title)
+    plt.xticks([])
+    plt.yticks([])
+
+    if flash:
+        matplotlib.rc('axes', edgecolor='r')
+    if not flash:
+        matplotlib.rc('axes', edgecolor='black')
+
     if epi_c is not None:
         circle = plt.Circle((epi_c[1], epi_c[0]), 1.5, fc='black', ec="red")
         plt.gca().add_patch(circle)

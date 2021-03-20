@@ -100,7 +100,8 @@ def process_R0_map(R0_map_raw: np.ndarray, get_cluster: int, threshold: Union[in
 
 
 def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1,
-                            save: bool = False, plot_output: bool = False, plot_clusters: bool = False) -> np.ndarray:
+                            save: bool = False, plot_output: bool = False, plot_clusters: bool = False,
+                            savefig: bool = False) -> np.ndarray:
     """
     For each value of beta, find the top N ranked cluster size(s). Return an array of cluster sizes vs beta..
     """
@@ -119,11 +120,15 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
         cluster_sizes[beta_index] = sizes[get_rank - 1]
 
         if plot_clusters:
-            plot_R0_clusters(R0_map, rank=10, save=True, save_name=f'{beta_index}', ext='.pdf')
+            flash = 7 <= beta_index <= 9
+            print(flash)
+            beta_title = rf'$\beta =$, {round(ensemble.betas[beta_index], 7)}'
+            plot_R0_clusters(R0_map, rank=10, save=True, save_name=f'beta_{beta_index}', title=beta_title,
+                             flash=flash)
 
     if plot_output:
         from landscape_control.plotting_methods import cluster_sizes_vs_beta
-        cluster_sizes_vs_beta(ensemble.betas, cluster_sizes)
+        cluster_sizes_vs_beta(ensemble.betas, cluster_sizes, save=savefig)
 
     if save:  # save cluster size in units km^2
         if os.path.exists(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta.npy'):
@@ -133,3 +138,8 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
         np.save(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta', cluster_sizes)
 
     return cluster_sizes
+
+
+def scenario_test_over_beta():
+    print('hi')
+

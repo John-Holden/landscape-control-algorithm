@@ -70,19 +70,22 @@ def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarr
 
 
 def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: Union[None, tuple] = None,
-                     show: bool = True, save: bool = False, save_name: Union[None, str] = None, ext: str = '.png'):
+                     show: bool = True, save: bool = False, save_name: Union[None, str] = None, ext: str = '.png',
+                     title: str = ""):
     """
     Rank and plot clusters
     """
+    _, R0_map_background = None, None
+
     if rank is not None and isinstance(rank, int):
         R0_map_background = np.array(R0_map > 0).astype(int)
         R0_map, _, _ = rank_cluster_map(R0_map, get_ranks=rank)
         R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background
-
+    
     if len(_) >= rank:
         cluster_number = rank
 
-    elif len(_) < rank and len(_) > 0:
+    elif rank > len(_) > 0:
         msg = f'\nError, expected {rank} clusters, only found {len(_)}'
         warnings.warn(msg)
         cluster_number = len(_)
@@ -104,7 +107,7 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
     cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
     im = plt.imshow(R0_map, cmap=cm)
     plt.colorbar(im)
-
+    plt.title(title)
     if epi_c is not None:
         circle = plt.Circle((epi_c[1], epi_c[0]), 1.5, fc='black', ec="red")
         plt.gca().add_patch(circle)

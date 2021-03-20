@@ -31,6 +31,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/landscape_control/_scenario_test.py">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/landscape_control/plotting_methods.py">
           <value>
             <Attribute>

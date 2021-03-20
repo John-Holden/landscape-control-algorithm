@@ -14,6 +14,11 @@ def linear_func(xdata: Iterable, c: int):
     return c * xdata
 
 
+def threshold_domain(domain:np.ndarray, density:float, rank:int=1):
+    susceptible = np.where(domain > density, 1, 0)
+    return rank_cluster_map(susceptible, get_ranks=rank)[0]
+
+
 def get_R0_gradient_fitting(species_distribution_map: np.ndarray, rhos: np.ndarray,
                             R0_v_rho_mapping: np.ndarray, print_fitting=False) -> np.ndarray:
     """

@@ -33,4 +33,5 @@ if __name__ == '__main__':
 
     cluster_sizes = get_clusters_over_betas(ens, plot_clusters=True, save=True)
 
+    # get_clusters_over_betas(ensemble, plot_output=True, plot_clusters=True)
 

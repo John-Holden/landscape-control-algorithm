@@ -8,9 +8,7 @@ from ._cluster_find import rank_cluster_map
 from parameters_and_setup import PATH_TO_INPUT_DATA
 from landscape_control.exceptions import NoClustersDetcted
 
-
-
-pltParams = {'figure.figsize': (7.5, 5.5),
+pltParams = {'figure.figsize': (9., 6.5),
              'axes.labelsize': 15,
              'ytick.labelsize': 15,
              'xtick.labelsize': 15,
@@ -72,7 +70,7 @@ def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarr
 
 
 def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: Union[None, tuple] = None,
-                     show: bool = True, save: bool = False, save_name: Union[None, str] = None):
+                     show: bool = True, save: bool = False, save_name: Union[None, str] = None, ext: str = '.png'):
     """
     Rank and plot clusters
     """
@@ -113,6 +111,7 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
 
     if save:
         name = 'cluster_fig' if save_name is None else save_name
+        name = f'{name}{ext}'
         plt.savefig(name)
 
     if show:

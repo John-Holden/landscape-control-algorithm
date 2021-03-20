@@ -29,7 +29,8 @@ if __name__ == '__main__':
     from landscape_control.plotting_methods import cluster_sizes_vs_beta
     from landscape_control.domain_processing import get_clusters_over_betas
 
-    ens = EnsembleInfo('landscape_control_package_upper_lower_bounds')
-    cluster_sizes = get_clusters_over_betas(ens, plot_clusters=True)
+    ens = EnsembleInfo('landscape_control_package_adb_test_5')
+
+    cluster_sizes = get_clusters_over_betas(ens, plot_clusters=True, save=True)
 
 

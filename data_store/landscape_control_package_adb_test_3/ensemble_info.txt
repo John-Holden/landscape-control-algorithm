@@ -1,0 +1,42 @@
+
+______Ensemble_______
+
+Notes : '...' 
+ 
+___Model parameters___
+	 - META_DATA : Exponentially distributed life-time dynamics : True
+	 - scale constant /alpha : 5 (m)
+	 - domain size L x L : 1000
+	 - simulation run time : 500 (steps)
+	 - betas : [5e-05, 0.00015]
+	 - rhos : [0.     0.0025 0.005  0.0075 0.01   0.0125 0.015  0.0175 0.02   0.0225
+ 0.025  0.0275 0.03   0.04   0.05   0.06   0.07   0.08   0.09   0.1   ]
+	 - dispersal_type constant /ell : 195 (m)
+	 - epi_center : 500
+	 - dispersal_type dispersal_model : gaussian
+	 - model : ADB
+	 - ensemble_size : 5
+	 - ensemble_mode : True
+	 - fb_lt : [60, 21]
+	 - I_tr_lt : 2555
+
+___Settings___
+	 - plot : False
+	 - show : False
+	 - save : False
+	 - plot_freq : None
+	 - verb : 1
+	 - ext : .png
+	 - percolation_bcd : False
+	 - max_generation_bcd : False
+
+___Metrics___
+	 - save_end_time : False
+	 - save_R0_history : True
+	 - save_percolation : False
+	 - save_time_series : False
+	 - save_mortality_ratio : False
+
+______Time elapsed_______
+core 1 | Simulation done in:  0 (Hrs): 1 (mins): 41 (s)
+Ensemble size : 5

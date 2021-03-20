@@ -114,13 +114,13 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
         cluster_sizes[beta_index] = sizes[get_rank - 1]
 
         if plot_clusters:
-            plot_R0_clusters(R0_map, rank=10)
+            plot_R0_clusters(R0_map, rank=10, save=True, save_name=f'{beta_index}', ext='.pdf')
 
     if plot_output:
         from landscape_control.plotting_methods import cluster_sizes_vs_beta
         cluster_sizes_vs_beta(ensemble.betas, cluster_sizes)
 
-    if save: # save cluster size in units km^2
+    if save:  # save cluster size in units km^2
         if os.path.exists(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta.npy'):
             msg = f'\n Overwriting data for : {ensemble.path_to_ensemble}/cluster_size_vs_beta'
             warnings.warn(msg), 'done'

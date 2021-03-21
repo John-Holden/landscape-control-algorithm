@@ -61,12 +61,14 @@ def coarse_grain(domain, cg_factor) -> np.ndarray:
 
 
 def get_R0_map(raw_species_data: np.ndarray, R0_vs_rho: np.ndarray,
-               rhos: np.ndarray, coarse_grain_factor: Union[None, int]=None) -> np.ndarray:
+               rhos: np.ndarray, coarse_grain_factor: Union[None, int]=None) -> Union[None, np.ndarray]:
     """
     Process a single domain, for one beta value, and return R0 map.
     """
     if max(R0_vs_rho) < 1:
-        print('Warning: trivial data-set, max R0 < 1')
+        msg = 'Warning: trivial data-set, max R0 < 1'
+        warnings.warn(msg)
+        return None
 
     if coarse_grain_factor is not None:
         raw_species_data_cg = coarse_grain(domain=raw_species_data, cg_factor=coarse_grain_factor)
@@ -82,6 +84,11 @@ def trim_domain(domain: np.ndarray):
     return domain[domain_indices[0]:domain_indices[1], domain_indices[2]: domain_indices[3]]  # trim domain and save.
 
 
+def is_too_small(R0_map: np.ndarray, limit: int = 100) -> bool:
+    """the domain under consideration is too small for processing"""
+    return np.count_nonzero(R0_map) < limit
+
+
 def process_R0_map(R0_map_raw: np.ndarray, get_cluster: int, threshold: Union[int, float] = 1) -> np.ndarray:
     """
     Strip patches below the threshold, 1 by default and return the cluster target. The domain is also cropped around the
@@ -92,6 +99,7 @@ def process_R0_map(R0_map_raw: np.ndarray, get_cluster: int, threshold: Union[in
 
     R0_map = R0_map * np.array(rank_cluster_map(R0_map, get_ranks=get_cluster)[0] > 0).astype(
         int)  # concentrate on the largest cluster
+
     R0_indices = np.where(R0_map)
     R0_indices = [min(R0_indices[0]) - 2, max(R0_indices[0]) + 2, min(R0_indices[1]) - 2, max(R0_indices[1]) + 2]
     R0_map = R0_map[R0_indices[0]:R0_indices[1], R0_indices[2]: R0_indices[3]]  # trim domain and save.
@@ -121,7 +129,6 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
 
         if plot_clusters:
             flash = 7 <= beta_index <= 9
-            print(flash)
             beta_title = rf'$\beta =$, {round(ensemble.betas[beta_index], 7)}'
             plot_R0_clusters(R0_map, rank=10, save=True, save_name=f'beta_{beta_index}', title=beta_title,
                              flash=flash)
@@ -140,6 +147,6 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
     return cluster_sizes
 
 
-def scenario_test_over_beta():
-    print('hi')
+
+
 

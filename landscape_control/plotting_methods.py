@@ -80,22 +80,22 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
     """
     Rank and plot clusters
     """
-    _, R0_map_background = None, None
+    # _, R0_map_background = None, None
 
-    if rank is not None and isinstance(rank, int):
+    if isinstance(rank, int):
         R0_map_background = np.array(R0_map > 0).astype(int)
         R0_map, _, _ = rank_cluster_map(R0_map, get_ranks=rank)
         R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background
-    
-    if len(_) >= rank:
-        cluster_number = rank
 
-    elif rank > len(_) > 0:
-        msg = f'\nError, expected {rank} clusters, only found {len(_)}'
-        warnings.warn(msg)
-        cluster_number = len(_)
-    else:
-        raise NoClustersDetcted
+        if len(_) >= rank:
+            cluster_number = rank
+
+        elif rank > len(_) > 0:
+            msg = f'\nError, expected {rank} clusters, only found {len(_)}'
+            warnings.warn(msg)
+            cluster_number = len(_)
+        else:
+            raise NoClustersDetcted
 
     colors = [f'C{i}' for i in range(len(np.unique(R0_map)) - 1)]
 
@@ -251,9 +251,14 @@ def plot_payoff_efficiencies_2(payoff_store: dict):
     plt.show()
 
 
-def plot_spatial_payoff_rank(R0_domain:np.ndarray, payoff_store: dict, rank:int):
+def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: int):
     """
-    For a given scenario, plot the map of the containment/
+        For a given scenario, plot the map of the containment/
+
+    :param R0_domain: the raw R0_values for a fitted parameter-combination
+    :param payoff_store: the dictionary-struct containing information about the payoffs vs iteration
+    :param rank: plot the nth-ranked scenario.
+    :return:
     """
     rank_epi_c = None
     rank_payoff = None

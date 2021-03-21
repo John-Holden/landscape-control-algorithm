@@ -35,9 +35,9 @@ class EnsembleInfo:   # High level struct, holds all ensemble info
         self.rhos = np.load(f'{self.path_to_ensemble}/rhos.npy')
         self.betas = np.load(f'{self.path_to_ensemble}/betas.npy')
         # x 0.01 ==> Covert to canopy cover density
-        self.raw_data = 0.01 * np.genfromtxt(f'{PATH_TO_INPUT_DATA}/{self.species}.csv', delimiter=',')
+        raw_data = 0.01 * np.genfromtxt(f'{PATH_TO_INPUT_DATA}/{self.species}.csv', delimiter=',')
         # Clean channel isles etc.
-        self.raw_data = self.raw_data * np.load(f'{PATH_TO_INPUT_DATA}/uk_isle_shape.npy')[1:-1, 1:-1]
+        self.raw_data = raw_data * np.load(f'{PATH_TO_INPUT_DATA}/uk_isle_shape.npy')[1:-1, 1:-1]
 
         # save/load paths
         self.path2_R0_raw = f'{self.path_to_ensemble}/processed_R0_maps'
@@ -57,6 +57,9 @@ class EnsembleInfo:   # High level struct, holds all ensemble info
 
         if not os.path.exists(self.path2_culled_indices):
             os.mkdir(self.path2_culled_indices)
+
+
+
 
 
 

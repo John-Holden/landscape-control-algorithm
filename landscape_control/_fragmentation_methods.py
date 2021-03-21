@@ -57,6 +57,9 @@ def find_alpha_discontinuities(alpha_steps, R0_map):
     for index in range(len(alpha_steps)-1):
         # Iterate through alpha and find where clusters join to form larger clusters.
         R0_map_alpha = np.where(R0_map > alpha_steps[index], 1, 0)
+        if not np.any(R0_map_alpha):
+            continue
+
         R0_map_alpha, cluster_sizes, cluster_ids = rank_cluster_map(R0_map=R0_map_alpha, get_ranks=5)
 
         R0_map_d_alpha = np.where(R0_map > alpha_steps[index+1], 1, 0)
@@ -86,7 +89,8 @@ def find_alpha_discontinuities(alpha_steps, R0_map):
                 # return the largest-rise in cluster size due to a cluster-cluster join.
                 return index, joins_at_alpha[index]['cluster_targets']
         except Exception as e:
-            warnings.warn(f" Warning! Something went wrong, {e}")
+            msg = f" Warning! Something went wrong, {e}"
+            warnings.warn(msg)
 
     sys.exit('Error something went wrong @ find_alpha_discontinuities')
 

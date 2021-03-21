@@ -6,13 +6,13 @@ import datetime
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import ClassVar, Tuple
+from typing import ClassVar, Tuple, Union
 from parameters_and_setup import PATH_TO_INPUT_DATA
 
 
 class ClusterFrag:
 
-    def __init__(self, ensemble_info: ClassVar, cg_factor:int, beta_index:int, iterations:int):
+    def __init__(self, ensemble_info: ClassVar, cg_factor: int, beta_index:int, iterations:int):
         scenario_name = f'{ensemble_info.species}_cg_{cg_factor}_beta_{beta_index}'
 
         self.path2_R0_processed = f'{ensemble_info.path2_R0_raw}/{scenario_name}_processed_R0_map.npy'
@@ -26,20 +26,32 @@ class ClusterFrag:
         self.R0_vs_rho = ensemble_info.R0_vs_rho_beta[beta_index]
 
     def execute(self, plot: bool = False):
-        from .domain_processing import get_R0_map, process_R0_map
+        from .domain_processing import get_R0_map, process_R0_map, is_too_small
 
         if os.path.exists(self.path2_patch_data):  # Check if data already exists
             msg = f'\n Overwriting:  {self.path2_patch_data}'
             warnings.warn(msg)
         if os.path.exists(self.path2_R0_processed):  # load R0-map
-            R0_processed = np.load(self.path2_R0_processed)
+            R0_processed = np.load(self.path2_R0_processed, allow_pickle=True)
+            if not np.any(R0_processed):  # Trivial map
+                return None
+
         else:  # generate R0-map from scratch, take threshold values of R0 and crop around the target cluster
             R0_raw = get_R0_map(self.raw_species_data,  self.R0_vs_rho, self.rhos,  self.cg_factor)
-            R0_processed = process_R0_map(R0_raw, get_cluster=1)
-            np.save(self.path2_R0_processed, R0_processed)
+            if R0_raw is None:  # Trivial map: no points
+                np.save(self.path2_R0_processed, ())
+                np.save(self.path2_fragmented_map, ())
+                return None
 
-        if R0_processed.max() < 1:  # Trivial map
-            return None
+            R0_processed = process_R0_map(R0_raw, get_cluster=1)
+            print('map size : ', np.count_nonzero(R0_processed))
+
+            if is_too_small(R0_processed) or R0_processed.max() < 1:  # Trivial map: too small/R0 too low to process
+                np.save(self.path2_R0_processed, ())
+                np.save(self.path2_fragmented_map, ())
+                return None
+
+            np.save(self.path2_R0_processed, R0_processed)
 
         connecting_patches, fragmented_map = self.fragment_domain(R0_processed,  plot)
 
@@ -47,7 +59,7 @@ class ClusterFrag:
         with open(f'{self.path2_patch_data}', 'w') as outfile:
             json.dump(connecting_patches, outfile, indent=4)
 
-        return 'success'
+        return True
 
     def fragment_domain(self, R0_map: np.ndarray, plot: bool = False) -> Tuple[dict, np.ndarray]:
         """
@@ -63,8 +75,7 @@ class ClusterFrag:
         fragmented_domain = np.zeros_like(R0_map)
 
         if plot:
-            plt.title('R0-map input:')
-            plot_R0_clusters(rank_cluster_map(R0_map)[0])
+            plot_R0_clusters(rank_cluster_map(R0_map)[0], rank=1)
 
         R0_target = np.copy(R0_map)
         time = datetime.datetime.now()
@@ -87,7 +98,7 @@ class ClusterFrag:
 class ScenarioTest:
 
     def __init__(self, ensemble_name: str, beta_index: int, cg_factor: int = 5, species: str = 'Fex',
-                 iterations: int = 10):
+                 iterations: Union[str, int] = 'auto'):
 
         path2_ensemble = f'{PATH_TO_INPUT_DATA}/{ensemble_name}'
         path2_scenario = f'{species}_cg_{cg_factor}_beta_{beta_index}'
@@ -97,21 +108,28 @@ class ScenarioTest:
         self.path2_payoff_data = f'{path2_ensemble}/fragmentation_payoff_data/'
         self.payoff_save_name = f'{self.path2_payoff_data}{path2_scenario}_iterations_{iterations}.pickle'
 
-
         if not os.path.exists(f'{self.path2_payoff_data}'):
             os.mkdir(f'{self.path2_payoff_data}')
 
         try:
             self.R0_domain = np.load(f'{path2_ensemble}/{path2_processed_R0_domain}')  # load domain
             self.fragmented_domain = np.load(f'{path2_ensemble}/{path2_fragmented_R0_domain}')  # load domain
-
         except Exception as exc:
-            sys.exit(f'Error, file(s) not found. Have you run the fragmentation algorithm ? \n {exc}')
+            sys.exit(f'\n Error, file(s) not found. Have you run the fragmentation algorithm ? \n {exc}')
+
+        if np.array_equal(self.fragmented_domain, []):
+            msg = f'\n Trivial R0_map detected for beta ind {beta_index}'
+            warnings.warn(msg)
+            self.is_valid = False
+        else:
+            self.is_valid = True
 
         self.species = species
         self.scenario_store = {}
         self.cg_factor = cg_factor
-        self.iterations = iterations
+        self.iterations = len([i for i in np.unique(self.fragmented_domain) if i]) if iterations == 'auto' \
+            else iterations
+
         self.beta_index = beta_index
         self.population_size = len(np.where(self.R0_domain)[0])
 

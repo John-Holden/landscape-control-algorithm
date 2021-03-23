@@ -28,7 +28,6 @@ def run_scenario_test_over_beta(package_name: str):
         plot_spatial_payoff_rank(scenario_test.R0_domain, payoffs, rank=1)
 
 
-
 if __name__ == '__main__':
     # run_fragmentation_over_beta('landscape_control_package_adb_full')
     run_scenario_test_over_beta('landscape_control_package_adb_full')

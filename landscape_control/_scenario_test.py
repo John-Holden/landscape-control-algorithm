@@ -10,11 +10,38 @@ from parameters_and_setup import STRUCTURING_ELEMENT
 from .plotting_methods import plot_fragmented_domain, plot_R0_clusters
 
 
-
 def fragment_combination(iterations: int) -> list:
     """
     Find all combinations for given iteration
     """
+    frag_comb = []
+    iter_ = [1+i for i in range(iterations)]
+    for i in iter_:
+        comb = list(itertools.combinations(iter_, r=i))
+        if len(comb) == 0:
+            continue
+
+        frag_comb.extend(comb)
+
+    return frag_comb
+
+
+def fragment_combination1(R0_map, fragmented_domain, iterations: int, epi_c) -> list:
+    """
+    Find all combinations for given iteration
+    """
+    for iter_ in range(1, iterations):
+        test_ = np.logical_not(fragmented_domain == iter_) * R0_map
+        test_ = rank_cluster_map(test_)[0]
+        plot_R0_clusters(test_, rank=2)
+        relevant_lines = np.unique(
+            fragmented_domain[np.where(test_ == test_[epi_c])]
+        )
+        relevant_lines = [i for i in relevant_lines if i]
+        print(f'relevant lins for {iter_} : {relevant_lines}')
+
+    # print('relevant lines ', np.unique(np.where(np.logical_and(fragmented_domain, test_))))
+    assert 0
     frag_comb = []
     iter_ = [1+i for i in range(iterations)]
     for i in iter_:

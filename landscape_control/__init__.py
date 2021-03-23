@@ -133,7 +133,7 @@ class ScenarioTest:
         self.beta_index = beta_index
         self.population_size = len(np.where(self.R0_domain)[0])
 
-        from ._scenario_test import fragment_combination, get_epi_c, domain_at_iteration, get_epicenter_payoff, \
+        from ._scenario_test import fragment_combination, fragment_combination1, get_epi_c, domain_at_iteration, get_epicenter_payoff, \
             add_rank_to_dict
 
         from .plotting_methods import plot_fragmented_domain, plot_R0_clusters
@@ -143,6 +143,7 @@ class ScenarioTest:
         self.domain_at_iteration = domain_at_iteration
         self.get_epicenter_payoff = get_epicenter_payoff
         self.fragment_combination = fragment_combination
+        self.fragment_combination1 = fragment_combination1
 
         self.plot_R0_clusters = plot_R0_clusters
         self.plot_fragmented_domain = plot_fragmented_domain
@@ -164,8 +165,19 @@ class ScenarioTest:
             # Iterate through each epicenter
             assert epi_c not in self.scenario_store  # ignore edge-case epicenters that already exist
             self.scenario_store[epi_c] = {}
+            print('all combinations :', containment_combos)
+            plt.title('all fragments')
+            self.plot_fragmented_domain(self.fragmented_domain, np.copy(self.R0_domain), epi_c, show_text=True)
+
+            R0_fragmented, fragment_lines = self.domain_at_iteration(self.R0_domain, self.fragmented_domain, (1))
+            self.plot_fragmented_domain(fragment_lines, np.copy(self.R0_domain), epi_c, show_text=True)
+
+            containment_combos_alt = self.fragment_combination1(np.copy(self.R0_domain), self.fragmented_domain,
+                                                                self.iterations, epi_c)
+
+            print('altered combinations : ', containment_combos_alt)
+            assert 0
             for c, comb in enumerate(containment_combos):
-                print(c, comb)
                 # Iterate through all combinations of containment
                 R0_fragmented, fragment_lines = self.domain_at_iteration(self.R0_domain, self.fragmented_domain, comb)
 

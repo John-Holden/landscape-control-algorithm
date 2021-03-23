@@ -140,7 +140,7 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
                            show_text: bool = False):
     """
     `Plot the domain after it has been fragmented
-    :param fragmented_domain: a spatial map of identified patche
+    :param fragmented_domain: a spatial map of identified patches
     :param R0_map: a spatial map of the  domain
     :param epi_c: optional, plot the epicenter when finding payoffs
     :param show_text: optional, show the fragmentation id alongside the containment scenairo.
@@ -173,8 +173,9 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
 
     # Optional, show epicenter
     if epi_c is not None:
-        circle = plt.Circle((epi_c[1], epi_c[0]), 0.5, fc='black', ec="red")
-        plt.gca().add_patch(circle)
+        # circle = plt.Circle((epi_c[1], epi_c[0]), 0.5, fc='black', ec="red")
+        # plt.gca().add_patch(circle)
+        plt.scatter([epi_c[1]], [epi_c[0]], c='r', s=150, marker='x')
 
     # Optional, display fragmentation iteration next to spatial line
     if show_text:

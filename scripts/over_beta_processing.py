@@ -17,7 +17,7 @@ def run_fragmentation_over_beta(package_name: str):
 
 def run_scenario_test_over_beta(package_name: str):
 
-    for beta_index in [10]:
+    for beta_index in [7]:
         scenario_test = ScenarioTest(package_name, beta_index)
         if not scenario_test.is_valid:
             print(f'skipping beta index {beta_index}')

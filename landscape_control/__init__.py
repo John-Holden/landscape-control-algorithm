@@ -159,13 +159,13 @@ class ScenarioTest:
         containment_combos = self.fragment_combination(self.iterations)
         epi_centers = self.get_epi_c(self.R0_domain, self.fragmented_domain)
 
+        time = datetime.datetime.now()
         for i, epi_c in enumerate(epi_centers):
             print(f'{i}/ {len(epi_centers)}')
             # Iterate through each epicenter
             assert epi_c not in self.scenario_store  # ignore edge-case epicenters that already exist
             self.scenario_store[epi_c] = {}
             for c, comb in enumerate(containment_combos):
-                print(c, comb)
                 # Iterate through all combinations of containment
                 R0_fragmented, fragment_lines = self.domain_at_iteration(self.R0_domain, self.fragmented_domain, comb)
 
@@ -179,7 +179,6 @@ class ScenarioTest:
                         striped = [i for i in comb if i not in relevant_lines]
                         plt.title(f'combination : {comb} | relevant lines : {relevant_lines} -> strip : {striped}')
                         self.plot_fragmented_domain(fragment_lines, np.copy(self.R0_domain), epi_c, show_text=True)
-                        assert 0
                     continue
 
                 num_saved = self.population_size - num_rem
@@ -192,6 +191,7 @@ class ScenarioTest:
 
         self.scenario_store = self.add_rank_to_dict(payoffs_list, epi_center_list, relevant_lines_list, self.scenario_store)
 
+        print(f'Time taken to fragment {self.iterations} iterations: {datetime.datetime.now() - time}')
         with open(self.payoff_save_name, 'wb') as handle:
             pickle.dump(self.scenario_store, handle, protocol=pickle.HIGHEST_PROTOCOL)
 

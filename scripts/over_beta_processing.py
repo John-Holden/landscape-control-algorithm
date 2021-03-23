@@ -17,13 +17,13 @@ def run_fragmentation_over_beta(package_name: str):
 
 def run_scenario_test_over_beta(package_name: str):
 
-    for beta_index in [4, 5, 6, 7, 8, 9, 10]:
+    for beta_index in [10]:
         scenario_test = ScenarioTest(package_name, beta_index)
         if not scenario_test.is_valid:
             print(f'skipping beta index {beta_index}')
             continue
 
-        payoffs, num = scenario_test.find_all_payoffs(plot_check=False)
+        payoffs, num = scenario_test.find_all_payoffs(plot_check=True)
         plot_payoff_efficiencies_1(payoffs)
         plot_spatial_payoff_rank(scenario_test.R0_domain, payoffs, rank=1)
 

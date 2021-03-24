@@ -10,48 +10,84 @@ from parameters_and_setup import STRUCTURING_ELEMENT
 from .plotting_methods import plot_fragmented_domain, plot_R0_clusters
 
 
-def fragment_combination(iterations: int) -> list:
+def find_inner_iterations(fragmented_domain: np.ndarray, R0_map: np.ndarray, iteration: Union[int, tuple], epi_c: tuple,
+                          iterations: int, redundant_lines: dict, multi_comb_mode: bool = False):
     """
-    Find all combinations for given iteration
+    find the relevant connected lines for a given iteration-fragmentation, take the negation of this to find the
+    disconnected irrelevant lines and append to a dict
     """
-    frag_comb = []
-    iter_ = [1+i for i in range(iterations)]
-    for i in iter_:
-        comb = list(itertools.combinations(iter_, r=i))
-        if len(comb) == 0:
-            continue
 
-        frag_comb.extend(comb)
+    fragment_at_iter = domain_at_iteration(R0_map, fragmented_domain, iteration)[0]
+    if fragment_at_iter is None:
+        if multi_comb_mode:
+            return
 
-    return frag_comb
+        nn_lines = np.unique(fragmented_domain[np.where(
+            binary_dilation(fragmented_domain == iteration, STRUCTURING_ELEMENT)
+        )])
+        potential_multi_connect = tuple([i for i in nn_lines if i])
+        return potential_multi_connect
+
+    # which fragmented lines are contained on the fragment ; iter_
+    connected_lines = np.unique(
+        fragmented_domain[np.where(fragment_at_iter == fragment_at_iter[epi_c])]
+    )
+
+    # which lines are redundant ie. { target : [redundant fragmentation iterations] }
+    non_trivial_lines = set(list(iteration)) if isinstance(iteration, tuple) else {iteration}
+    non_trivial_lines = set(range(1, iterations+1)) - non_trivial_lines
+    redundant_outer_iterations = non_trivial_lines - set([i for i in connected_lines if i])
+
+    if redundant_outer_iterations:
+        redundant_lines[iteration] = redundant_outer_iterations
 
 
-def fragment_combination1(R0_map, fragmented_domain, iterations: int, epi_c) -> list:
+def gen_frag_combos(redundant_combos: dict, iterations: int):
     """
-    Find all combinations for given iteration
+    From the information of redundant fragmentation combinations, return a list of relevant combinations for given epi_C
     """
-    for iter_ in range(1, iterations):
-        test_ = np.logical_not(fragmented_domain == iter_) * R0_map
-        test_ = rank_cluster_map(test_)[0]
-        plot_R0_clusters(test_, rank=2)
-        relevant_lines = np.unique(
-            fragmented_domain[np.where(test_ == test_[epi_c])]
-        )
-        relevant_lines = [i for i in relevant_lines if i]
-        print(f'relevant lins for {iter_} : {relevant_lines}')
-
-    # print('relevant lines ', np.unique(np.where(np.logical_and(fragmented_domain, test_))))
+    print('redundant combinations : ', redundant_combos)
     assert 0
+
     frag_comb = []
-    iter_ = [1+i for i in range(iterations)]
+    iter_ = [1 + i for i in range(iterations)]
     for i in iter_:
         comb = list(itertools.combinations(iter_, r=i))
         if len(comb) == 0:
             continue
 
         frag_comb.extend(comb)
-
     return frag_comb
+
+
+def find_frag_combos(R0_map: np.ndarray, fragmented_domain: np.ndarray, iterations: int, epi_c: tuple) -> dict:
+    """
+    Find all combinations for given iteration
+    """
+    redundant_lines = {}
+    potential_multi_fragment = []
+    for iter_ in range(1, iterations + 1):
+        potential_multi_combo = find_inner_iterations(fragmented_domain, R0_map, iter_, epi_c, iterations,
+                                                      redundant_lines)
+
+        if potential_multi_combo:
+            potential_multi_fragment.append(potential_multi_combo)
+            redundant_lines[iter_] = None
+
+    if potential_multi_fragment:  # find
+        potential_multi_fragment_combos = []
+        for iter_combo in potential_multi_fragment:
+            for len_ in range(2, len(iter_combo)+1):
+                comb = list(itertools.combinations(iter_combo, r=len_))
+                if comb not in potential_multi_fragment_combos:
+                    potential_multi_fragment_combos.extend(comb)
+
+        for iter_combo in potential_multi_fragment_combos:
+            find_inner_iterations(fragmented_domain, R0_map, iter_combo, epi_c, iterations, redundant_lines,
+                                  multi_comb_mode=True)
+
+
+    return gen_frag_combos(redundant_lines, iterations)
 
 
 def get_epi_c(R0_domain: np.ndarray, fragmented_domain: np.ndarray) -> Tuple:
@@ -67,7 +103,7 @@ def get_epi_c(R0_domain: np.ndarray, fragmented_domain: np.ndarray) -> Tuple:
         col_epi = cluster_indices[1].sum() / len(cluster_indices[0])
         potential_row_index = cluster_indices[0] - row_epi  # find closest patch (by row) to the cluster COM
         potential_col_index = cluster_indices[1] - col_epi  # find closest patch (by row) to the cluster COM
-        potential_index = np.sqrt(potential_row_index**2 + potential_col_index**2)
+        potential_index = np.sqrt(potential_row_index ** 2 + potential_col_index ** 2)
         row_epi = cluster_indices[0][np.argmin(potential_index)]
         col_epi = cluster_indices[1][np.argmin(potential_index)]
         assert fragmented[row_epi, col_epi] == id_, f'Error, expected {id_} found {fragmented[row_epi, col_epi]}'
@@ -132,7 +168,7 @@ def add_rank_to_dict(payoffs: list, epicenters: list, relevant_lines: list, scen
     ranked_args = np.argsort(payoffs)[::-1]
     epicenters = epicenters[ranked_args]
     relevant_lines = relevant_lines[ranked_args]
-    ranks = range(1, len(relevant_lines)+1)
+    ranks = range(1, len(relevant_lines) + 1)
     for epi, line, rank in zip(epicenters, relevant_lines, ranks):
         scenario_store[tuple(epi)][line]['rank'] = rank
 

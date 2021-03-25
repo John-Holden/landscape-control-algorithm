@@ -106,7 +106,6 @@ class ScenarioTest:
         path2_fragmented_R0_domain = f'fragmented_R0_domain/{path2_scenario}_fragmented_domain.npy'
 
         self.path2_payoff_data = f'{path2_ensemble}/fragmentation_payoff_data/'
-        self.payoff_save_name = f'{self.path2_payoff_data}{path2_scenario}_iterations_{iterations}.pickle'
 
         if not os.path.exists(f'{self.path2_payoff_data}'):
             os.mkdir(f'{self.path2_payoff_data}')
@@ -129,7 +128,7 @@ class ScenarioTest:
         self.cg_factor = cg_factor
         self.iterations = len([i for i in np.unique(self.fragmented_domain) if i]) if iterations == 'auto' \
             else iterations
-
+        self.payoff_save_name = f'{self.path2_payoff_data}{path2_scenario}_iterations_{iterations}.pickle'
         self.beta_index = beta_index
         self.population_size = len(np.where(self.R0_domain)[0])
 

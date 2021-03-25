@@ -1,3 +1,5 @@
+import os
+import sys
 from landscape_control import ClusterFrag, ScenarioTest
 from parameters_and_setup import EnsembleInfo
 
@@ -26,4 +28,10 @@ def load_and_plot_scenario():
 
 
 if __name__ == '__main__':
-    run_scenario_test_over_beta('landscape_control_package_adb_full')
+    if 'HPC_MODE' in os.environ:
+        assert os.environ['HPC_MODE'] == 'TRUE'
+        assert len(sys.argv) == 2 and sys.argv[1].isdigit()
+        run_scenario_test_over_beta('landscape_control_package_adb_full', sys.argv[1])
+
+    else:
+        run_scenario_test_over_beta('landscape_control_package_adb_full')

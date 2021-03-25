@@ -1,6 +1,6 @@
+from typing import Union
 from parameters_and_setup import EnsembleInfo
 from landscape_control import ClusterFrag, ScenarioTest
-from landscape_control.plotting_methods import plot_payoff_efficiencies_1, plot_spatial_payoff_rank
 
 
 def run_fragmentation_over_beta(package_name: str):
@@ -12,17 +12,25 @@ def run_fragmentation_over_beta(package_name: str):
     print(f'success : {result} ')
 
 
-def run_scenario_test_over_beta(package_name: str):
+def run_scenario_test_over_beta(package_name: str, job_id: Union[None, str]):
 
-    for beta_index in range(3, 20):
+    if job_id:
+        beta_index = int(job_id)-1
+        scenario_test = ScenarioTest(package_name, beta_index)
+        if not scenario_test.is_valid:
+            print(f'\t skipping beta index {beta_index}')
+            return
+
+        scenario_test.find_all_payoffs(plot_check=False)
+        return
+
+    for beta_index in range(1, 5):
         scenario_test = ScenarioTest(package_name, beta_index)
         if not scenario_test.is_valid:
             print(f'skipping beta index {beta_index}')
             continue
 
         scenario_test.find_all_payoffs(plot_check=False)
-        # plot_payoff_efficiencies_1(payoffs)
-        # plot_spatial_payoff_rank(scenario_test.R0_domain, payoffs, rank=1)
 
 
 if __name__ == '__main__':

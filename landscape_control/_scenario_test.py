@@ -100,7 +100,7 @@ def add_rank_to_dict(payoffs: list, epicenters: list, relevant_lines: list, scen
     """
     payoffs = np.array(payoffs)
     epicenters = np.array(epicenters)
-    relevant_lines = np.array(relevant_lines)
+    relevant_lines = np.array(relevant_lines, dtype=object)
 
     ranked_args = np.argsort(payoffs)[::-1]
     epicenters = epicenters[ranked_args]

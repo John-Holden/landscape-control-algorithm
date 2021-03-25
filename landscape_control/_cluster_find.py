@@ -40,7 +40,8 @@ def rank_cluster_map(R0_map: np.ndarray, get_ranks: Union[None, int, Iterable] =
                 sys.exit(f'Error type {type(get_ranks)} is not iterable')
 
     R0_clusters_ = np.zeros_like(R0_clusters)
-    R0_clusters = R0_clusters * np.isin(R0_clusters, cluster_ids)  # select top n clusters
+    R0_clusters = R0_clusters.flatten() * np.in1d(R0_clusters.flatten(), cluster_ids)
+    R0_clusters = R0_clusters.reshape(R0_clusters_.shape)  # select target-clusters
     for rank_index, id in enumerate(cluster_ids):
         R0_clusters_[np.where(R0_clusters == id)] = ranks[rank_index]
         cluster_ids[rank_index] = ranks[rank_index]

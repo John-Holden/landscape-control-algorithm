@@ -1,6 +1,36 @@
+import os
+import pickle
 from typing import Union
-from parameters_and_setup import EnsembleInfo
+import matplotlib.pyplot as plt
+from parameters_and_setup import EnsembleInfo, PATH_TO_INPUT_DATA
 from landscape_control import ClusterFrag, ScenarioTest
+from landscape_control.plotting_methods import plot_payoff_efficiencies_1, process_payoffs
+
+
+
+
+def get_efficiency_over_beta(package_name: str):
+    ensemble = EnsembleInfo(package_name)
+    path = f'{PATH_TO_INPUT_DATA}/{package_name}/fragmentation_payoff_data'
+    for i in range(3, 19):
+        print(f'loading {i}')
+        if not os.path.exists(f'{path}/Fex_cg_5_beta_{i}_iterations_auto.pickle'):
+            print(f'path : {path}/Fex_cg_5_beta_{i}_iterations_auto.pickle does not exist!')
+            continue
+
+        with open(f'{path}/Fex_cg_5_beta_{i}_iterations_auto.pickle', 'rb') as f:
+            beta_payoff = pickle.load(f)
+            payoff = process_payoffs(beta_payoff)[0]
+            payoff = payoff[-5:]
+            # msg = f'beta = {round(ensemble.betas[i], 7)}'
+
+        payoff = list(payoff)
+        xdata = [ensemble.betas[i] for result in range(len(payoff))]
+        plt.scatter(xdata, payoff, marker='x')
+        plt.plot(xdata.extend(xdata[0]), payoff.append(0))
+    plt.show()
+    assert 0
+
 
 
 def run_fragmentation_over_beta(package_name: str):
@@ -35,4 +65,5 @@ def run_scenario_test_over_beta(package_name: str, job_id: Union[None, str]):
 
 if __name__ == '__main__':
     # run_fragmentation_over_beta('landscape_control_package_adb_full')
-    run_scenario_test_over_beta('landscape_control_package_adb_full')
+    # run_scenario_test_over_beta('landscape_control_package_adb_full')
+    get_efficiency_over_beta('landscape_control_package_adb_full')

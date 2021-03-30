@@ -1,6 +1,7 @@
 import warnings
 import numpy as np
 import matplotlib
+from typing import Optional
 import matplotlib.pyplot as plt
 from typing import Union, Iterable
 from matplotlib.colors import LinearSegmentedColormap
@@ -188,7 +189,7 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
     return
 
 
-def append_payoffs(payoff_store: dict):
+def process_payoffs(payoff_store: dict, plot:bool=False, title:Optional[str]=None):
     """
     Descend into payoff dictionary and return a sorted array of payoff, number_saved, number_removed and number_culled.
     """
@@ -218,16 +219,18 @@ def append_payoffs(payoff_store: dict):
     N_saved = N_saved[order]
     N_culled = N_culled[order]
 
+    if plot:
+        plot_payoff_efficiencies_1(payoff, title)
+
     return payoff, N_saved, N_culled, N_removed
 
 
-def plot_payoff_efficiencies_1(payoff_store: dict):
+def plot_payoff_efficiencies_1(payoff: np.ndarray, title: Optional[str] = None):
     """
     Plot payoff found from scenario test.
     """
-    payoff = append_payoffs(payoff_store)[0]
-
-    plt.title('payoff1')
+    if title:
+        plt.title(title)
     plt.plot(np.arange(len(payoff), 0, -1), payoff)
     plt.scatter(np.arange(len(payoff), 0, -1), payoff)
     plt.xlabel('rank')

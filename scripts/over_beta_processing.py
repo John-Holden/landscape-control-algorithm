@@ -33,9 +33,9 @@ def get_efficiency_over_beta(package_name: str):
         plt.plot(xdata, payoff)
 
     plt.xlim(-0.00001, ensemble.betas[15])
+    plt.savefig('payoff_over_beta.pdf')
     plt.show()
 
-    plt.savefig('payoff_over_beta.pdf')
 
 
 

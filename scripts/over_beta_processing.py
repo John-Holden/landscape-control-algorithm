@@ -7,36 +7,40 @@ from landscape_control import ClusterFrag, ScenarioTest
 from landscape_control.plotting_methods import plot_payoff_efficiencies_1, process_payoffs
 
 
-
-
 def get_efficiency_over_beta(package_name: str):
     ensemble = EnsembleInfo(package_name)
     path = f'{PATH_TO_INPUT_DATA}/{package_name}/fragmentation_payoff_data'
-    for i in range(3, 19):
+    avg_payoff = []
+    for i in range(0, 15):
         print(f'loading {i}')
         if not os.path.exists(f'{path}/Fex_cg_5_beta_{i}_iterations_auto.pickle'):
             print(f'path : {path}/Fex_cg_5_beta_{i}_iterations_auto.pickle does not exist!')
+            plt.scatter([ensemble.betas[i]], [0], marker='x')
+            plt.plot([ensemble.betas[i]], [0])
+            avg_payoff.append(0)
             continue
 
         with open(f'{path}/Fex_cg_5_beta_{i}_iterations_auto.pickle', 'rb') as f:
             beta_payoff = pickle.load(f)
             payoff = process_payoffs(beta_payoff)[0]
             payoff = payoff[-5:]
-            # msg = f'beta = {round(ensemble.betas[i], 7)}'
 
         payoff = list(payoff)
-        xdata = [ensemble.betas[i] for result in range(len(payoff))]
+        avg_payoff.append(sum(payoff)/len(payoff))
+        xdata = [ensemble.betas[i]] * len(payoff)
         plt.scatter(xdata, payoff, marker='x')
-        plt.plot(xdata.extend(xdata[0]), payoff.append(0))
+        xdata.append(xdata[0]), payoff.append(0)
+        plt.plot(xdata, payoff)
+
+    plt.xlim(-0.00001, ensemble.betas[15])
     plt.show()
-    assert 0
+
+    plt.savefig('payoff_over_beta.pdf')
 
 
 
 def run_fragmentation_over_beta(package_name: str):
-
     ensemble = EnsembleInfo(package_name)
-
     c_frag = ClusterFrag(ensemble, cg_factor=5, beta_index=3, iterations=20)
     result = c_frag.execute(plot=True)
     print(f'success : {result} ')

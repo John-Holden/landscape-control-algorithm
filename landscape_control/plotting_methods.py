@@ -1,3 +1,4 @@
+import pprint
 import warnings
 import numpy as np
 import matplotlib
@@ -19,9 +20,8 @@ pltParams = {'figure.figsize': (9., 6.5),
 plt.rcParams.update(pltParams)
 
 
-
 def plot_R0_vs_rho_over_ensemble(ensemble_name):
-    'Plot R0 vs Rho for beta values'
+    """ Plot R0 vs Rho for beta values """
     from .domain_processing import linear_func
     from scipy.optimize import curve_fit
 
@@ -189,7 +189,7 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
     return
 
 
-def process_payoffs(payoff_store: dict, plot:bool=False, title:Optional[str]=None):
+def process_payoffs(payoff_store: dict, plot: bool = False, title: Optional[str] = None):
     """
     Descend into payoff dictionary and return a sorted array of payoff, number_saved, number_removed and number_culled.
     """
@@ -204,6 +204,11 @@ def process_payoffs(payoff_store: dict, plot:bool=False, title:Optional[str]=Non
             if result is None:
                 continue
 
+            if 'skip_flag' in result:
+                if result['skip_flag']:
+                    print('skipping', result)
+                    continue
+
             N_saved.append(result['Ns'])
             N_culled.append(result['Nc'])
             N_removed.append(result['Nr'])
@@ -212,7 +217,7 @@ def process_payoffs(payoff_store: dict, plot:bool=False, title:Optional[str]=Non
     N_culled = np.array(N_culled)
     N_removed = np.array(N_removed)
 
-    payoff = N_saved / N_culled
+    payoff = N_saved / (N_removed * N_culled)
 
     order = np.argsort(payoff)
     payoff = payoff[order]
@@ -240,27 +245,15 @@ def plot_payoff_efficiencies_1(payoff: np.ndarray, title: Optional[str] = None):
     plt.show()
 
 
-def plot_payoff_efficiencies_2(payoff_store: dict):
-    """
-    Plot payoff found from scenario test.
-    """
-    _, N_saved, N_culled, _ = append_payoffs(payoff_store)
-    print('len ns', len(N_saved))
-    print('len unique elements ', len(np.unique(N_saved)))
-    plt.title('payoff1')
-    plt.scatter(N_culled, N_saved)
-    plt.xlabel('N culled')
-    plt.ylabel('N saved')
-    plt.show()
-
-
-def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: int):
+def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: int,
+                             title: Optional[str] = None):
     """
         For a given scenario, plot the map of the containment/
 
     :param R0_domain: the raw R0_values for a fitted parameter-combination
     :param payoff_store: the dictionary-struct containing information about the payoffs vs iteration
     :param rank: plot the nth-ranked scenario.
+    :param title: display title on plot
     :return:
     """
     rank_epi_c = None
@@ -275,6 +268,10 @@ def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: in
                 rank_payoff = payoff
                 rank_cull_line = cull_line
                 rank_cull_line_indices = payoff['frag_line_indices']
+                if 'skip_flag' in payoff:
+                    if payoff['skip_flag']:
+                        msg = 'Scenario is omitted from over-beta payoff analysis'
+                        warnings.warn(msg)
                 break
 
     if rank_cull_line is None or rank_payoff is None or rank_epi_c is None:
@@ -286,9 +283,16 @@ def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: in
     nbins = len(colors)
     cmap_name = 'my_list'
 
-    print(f'rank {rank} \n | epicenter : {rank_epi_c}, cull lines : {rank_cull_line}, '
-          f'number saved : {rank_payoff["Ns"]}, number removed : {rank_payoff["Nr"]}, '
-          f'number culled : {rank_payoff["Nc"]}')
+    msg = f'rank {rank}, epicenter : {rank_epi_c}, cull lines : {rank_cull_line}' \
+          f' number saved : {rank_payoff["Ns"]}, ' \
+          f' number removed : {rank_payoff["Nr"]}, ' \
+          f' number culled : {rank_payoff["Nc"]}, '\
+          f' payoff : {rank_payoff["Ns"] / rank_payoff["Nc"]}, '
+
+    msg = msg + f" skipped/ignore : {rank_payoff['skip_flag']} " if 'skip_flag' in rank_payoff else msg
+
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(msg)
 
     R0_domain_ = np.copy(R0_domain)
     R0_domain[rank_cull_line_indices] = 0
@@ -312,4 +316,7 @@ def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: in
     cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
     im = plt.imshow(R0_domain_, cmap=cm, alpha=0.80)
     plt.colorbar(im)
+
+    if title:
+        plt.title(title)
     plt.show()

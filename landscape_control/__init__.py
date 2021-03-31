@@ -182,7 +182,7 @@ class ScenarioTest:
 
                 num_saved = self.population_size - num_rem
                 self.scenario_store[epi_c][relevant_lines] = {'Ns': num_saved, 'Nr': num_rem, 'Nc': num_culled,
-                                                              'frag_line_indices':np.where(fragment_lines)}
+                                                              'frag_line_indices': np.where(fragment_lines)}
 
                 relevant_lines_list.append(relevant_lines)
                 payoffs_list.append(num_saved / num_culled)

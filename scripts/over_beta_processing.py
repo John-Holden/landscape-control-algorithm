@@ -116,7 +116,4 @@ def comp_cluster_sizes(package_names: List[str]):
 
 
 if __name__ == '__main__':
-    # run_fragmentation_over_beta('landscape_control_package_adb_pl3')
-    # cluster_size_over_beta('landscape_control_package_adb_pl3', savefig=True)
-    run_scenario_test_over_beta('landscape_control_package_adb_pl3')
-    # get_efficiency_over_beta('', plot=True, save=False)
+    run_scenario_test_over_beta('landscape_control_package_adb_pl')

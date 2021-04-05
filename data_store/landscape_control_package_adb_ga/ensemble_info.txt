@@ -1,7 +1,7 @@
 
 ______Ensemble_______
 
-Notes : '...' 
+Notes : 'gaussian distribution ensemble data'
  
 ___Model parameters___
 	 - META_DATA : Exponentially distributed life-time dynamics : True

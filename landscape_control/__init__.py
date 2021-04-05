@@ -49,7 +49,7 @@ class ClusterFrag:
             if is_too_small(R0_processed) or R0_processed.max() < 1:  # Trivial map: too small/R0 too low to process
                 np.save(self.path2_R0_processed, ())
                 np.save(self.path2_fragmented_map, ())
-                return None
+                return 'Map too small!'
 
             np.save(self.path2_R0_processed, R0_processed)
 

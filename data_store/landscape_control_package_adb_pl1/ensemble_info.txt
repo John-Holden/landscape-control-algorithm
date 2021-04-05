@@ -1,0 +1,96 @@
+
+______Ensemble_______
+
+Notes : '...' 
+ 
+___Model parameters___
+	 - META_DATA : Exponentially distributed life-time dynamics : True
+	 - scale constant /alpha : 5 (m)
+	 - domain size L x L : 1000
+	 - simulation run time : 500 (steps)
+	 - betas : [  0.00000000e+00   1.00000000e-05   2.00000000e-05   3.00000000e-05
+   4.00000000e-05   5.00000000e-05   6.00000000e-05   7.00000000e-05
+   8.00000000e-05   9.00000000e-05   1.00000000e-04   1.10000000e-04
+   1.20000000e-04   1.30000000e-04   1.40000000e-04   1.50000000e-04
+   1.60000000e-04   1.70000000e-04   1.80000000e-04   1.90000000e-04]
+	 - rhos : [ 0.      0.0025  0.005   0.0075  0.01    0.0125  0.015   0.0175  0.02
+  0.0225  0.025   0.0275  0.03    0.04    0.05    0.06    0.07    0.08
+  0.09    0.1   ]
+	 - dispersal_type constant /ell : (205, 3.3) (m)
+	 - epi_center : 500
+	 - dispersal_type dispersal_model : power_law
+	 - model : ADB
+	 - ensemble_size : 5
+	 - ensemble_mode : True
+	 - fb_lt : [60, 21]
+	 - I_tr_lt : 2555
+
+___Settings___
+	 - plot : False
+	 - show : False
+	 - save_to_anim : False
+	 - plot_freq : None
+	 - verb : 0
+	 - ext : .png
+	 - percolation_bcd : False
+	 - max_generation_bcd : False
+
+___Metrics___
+	 - save_end_time : False
+	 - save_R0_history : True
+	 - save_percolation : False
+	 - save_time_series : False
+	 - save_mortality_ratio : False
+
+______Time elapsed_______
+core 45 | Simulation done in:  0 (Hrs): 48 (mins): 19 (s)
+core 37 | Simulation done in:  0 (Hrs): 48 (mins): 24 (s)
+core 38 | Simulation done in:  0 (Hrs): 48 (mins): 30 (s)
+core 39 | Simulation done in:  0 (Hrs): 48 (mins): 35 (s)
+core 36 | Simulation done in:  0 (Hrs): 48 (mins): 45 (s)
+core 47 | Simulation done in:  0 (Hrs): 48 (mins): 47 (s)
+core 10 | Simulation done in:  0 (Hrs): 48 (mins): 54 (s)
+core 46 | Simulation done in:  0 (Hrs): 48 (mins): 56 (s)
+core 41 | Simulation done in:  0 (Hrs): 49 (mins): 10 (s)
+core 1 | Simulation done in:  0 (Hrs): 49 (mins): 19 (s)
+core 6 | Simulation done in:  0 (Hrs): 49 (mins): 22 (s)
+core 33 | Simulation done in:  0 (Hrs): 49 (mins): 25 (s)
+core 20 | Simulation done in:  0 (Hrs): 49 (mins): 34 (s)
+core 9 | Simulation done in:  0 (Hrs): 49 (mins): 42 (s)
+core 17 | Simulation done in:  0 (Hrs): 49 (mins): 44 (s)
+core 13 | Simulation done in:  0 (Hrs): 49 (mins): 45 (s)
+core 14 | Simulation done in:  0 (Hrs): 49 (mins): 49 (s)
+core 19 | Simulation done in:  0 (Hrs): 49 (mins): 50 (s)
+core 8 | Simulation done in:  0 (Hrs): 49 (mins): 52 (s)
+core 18 | Simulation done in:  0 (Hrs): 49 (mins): 52 (s)
+core 12 | Simulation done in:  0 (Hrs): 49 (mins): 53 (s)
+core 32 | Simulation done in:  0 (Hrs): 49 (mins): 55 (s)
+core 22 | Simulation done in:  0 (Hrs): 49 (mins): 56 (s)
+core 24 | Simulation done in:  0 (Hrs): 49 (mins): 57 (s)
+core 35 | Simulation done in:  0 (Hrs): 49 (mins): 58 (s)
+core 28 | Simulation done in:  0 (Hrs): 50 (mins): 10 (s)
+core 31 | Simulation done in:  0 (Hrs): 50 (mins): 12 (s)
+core 23 | Simulation done in:  0 (Hrs): 50 (mins): 15 (s)
+core 27 | Simulation done in:  0 (Hrs): 50 (mins): 21 (s)
+core 11 | Simulation done in:  0 (Hrs): 50 (mins): 22 (s)
+core 5 | Simulation done in:  0 (Hrs): 50 (mins): 24 (s)
+core 29 | Simulation done in:  0 (Hrs): 50 (mins): 27 (s)
+core 21 | Simulation done in:  0 (Hrs): 50 (mins): 27 (s)
+core 30 | Simulation done in:  0 (Hrs): 50 (mins): 30 (s)
+core 7 | Simulation done in:  0 (Hrs): 50 (mins): 32 (s)
+core 15 | Simulation done in:  0 (Hrs): 50 (mins): 34 (s)
+core 16 | Simulation done in:  0 (Hrs): 50 (mins): 47 (s)
+core 34 | Simulation done in:  0 (Hrs): 50 (mins): 49 (s)
+core 4 | Simulation done in:  0 (Hrs): 50 (mins): 57 (s)
+core 2 | Simulation done in:  0 (Hrs): 51 (mins): 0 (s)
+core 26 | Simulation done in:  0 (Hrs): 51 (mins): 19 (s)
+core 44 | Simulation done in:  0 (Hrs): 51 (mins): 22 (s)
+core 3 | Simulation done in:  0 (Hrs): 51 (mins): 30 (s)
+core 43 | Simulation done in:  0 (Hrs): 52 (mins): 42 (s)
+core 42 | Simulation done in:  0 (Hrs): 52 (mins): 46 (s)
+core 49 | Simulation done in:  0 (Hrs): 53 (mins): 16 (s)
+core 50 | Simulation done in:  0 (Hrs): 53 (mins): 32 (s)
+core 25 | Simulation done in:  0 (Hrs): 53 (mins): 35 (s)
+core 40 | Simulation done in:  0 (Hrs): 53 (mins): 55 (s)
+core 48 | Simulation done in:  0 (Hrs): 54 (mins): 14 (s)
+Ensemble size : 250Ensemble size : 250Ensemble size : 250

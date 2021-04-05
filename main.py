@@ -3,7 +3,7 @@ import sys
 from landscape_control import ClusterFrag, ScenarioTest
 from parameters_and_setup import EnsembleInfo
 
-from landscape_control.plotting_methods import plot_payoff_efficiencies_1, append_payoffs
+from landscape_control.plotting_methods import plot_payoff_efficiencies_1
 from scripts.over_beta_processing import run_scenario_test_over_beta
 
 def run_fragmentation():
@@ -26,12 +26,11 @@ def load_and_plot_scenario():
     payoff_dat = pickle.load(file)
     plot_payoff_efficiencies_1(payoff_dat)
 
-
 if __name__ == '__main__':
     if 'HPC_MODE' in os.environ:
         assert os.environ['HPC_MODE'] == 'TRUE'
         assert len(sys.argv) == 2 and sys.argv[1].isdigit()
-        run_scenario_test_over_beta('landscape_control_package_adb_full', sys.argv[1])
+        run_scenario_test_over_beta('landscape_control_package_adb_pl3', sys.argv[1])
 
     else:
-        run_scenario_test_over_beta('landscape_control_package_adb_full')
+        run_scenario_test_over_beta('landscape_control_package_adb_pl3')

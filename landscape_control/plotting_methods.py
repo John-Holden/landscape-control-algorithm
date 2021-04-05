@@ -43,7 +43,7 @@ def plot_R0_vs_rho_over_ensemble(ensemble_name):
     return
 
 
-def cluster_sizes_vs_beta(betas: Iterable, cluster_sizes: Iterable, cluster_rank: int = 1, save: bool = False):
+def plot_cluster_sizes_vs_beta(betas: Iterable, cluster_sizes: Iterable, cluster_rank: int = 1, save: bool = False):
     """
     Plot how top cluster size varies with infectivity beta.
     """
@@ -58,6 +58,22 @@ def cluster_sizes_vs_beta(betas: Iterable, cluster_sizes: Iterable, cluster_rank
         plt.savefig('cluster_sz_vs_beta', bbox_inches='tight')
     plt.show()
 
+
+def plot_cluster_size_comparison_over_beta(cluster_sz_dat: list, beta_dat:list, cluster_rank: int = 1,
+                                           save: Optional[bool] = None):
+    """
+    Plot a comparison of cluster-size over beta for power-law vs gaussian
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for cluster_sz, betas in zip(cluster_sz_dat, beta_dat):
+        ax.plot(betas, cluster_sz)
+        ax.scatter(betas, cluster_sz)
+
+    plt.ylabel(rf"Rank {cluster_rank} cluster size $km^{2}$")
+    plt.xlabel(r'$\beta$')
+    if save:
+        plt.savefig('cluster_size_ga_pl_comp.pdf')
+    plt.show()
 
 def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarray],
                                largest_cluster_size_vs_alpha: np.ndarray,
@@ -189,6 +205,31 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
     return
 
 
+def plot_payoffs_over_beta(payoff: np.ndarray, betas: np.ndarray, max_beta_index: Optional[int] = None,
+                           save: Optional[bool] = None):
+    """
+    Plot the payoff metrics Ns / (Nc * Nr) over the parameter-space of beta
+    :param payoff:
+    :param betas:
+    :param max_beta_index:
+    :return:
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    betas = betas[:max_beta_index] if max_beta_index else betas
+    payoff = payoff[:max_beta_index] if max_beta_index else payoff
+    for i, result in enumerate(payoff):
+        ax.scatter([betas[i]]*payoff.shape[1], result, marker='x')
+        ax.plot([betas[i]]*payoff.shape[1], result)
+
+
+    ax.plot(betas, payoff[:, -1], ls='--', c='black', alpha=0.75)
+    plt.xticks(rotation=15)
+    if save:
+        plt.savefig('payoff_over_beta.pdf')
+    plt.show()
+
+
+
 def process_payoffs(payoff_store: dict, plot: bool = False, title: Optional[str] = None):
     """
     Descend into payoff dictionary and return a sorted array of payoff, number_saved, number_removed and number_culled.
@@ -206,7 +247,7 @@ def process_payoffs(payoff_store: dict, plot: bool = False, title: Optional[str]
 
             if 'skip_flag' in result:
                 if result['skip_flag']:
-                    print('skipping', result)
+                    print('\t skipping', result)
                     continue
 
             N_saved.append(result['Ns'])

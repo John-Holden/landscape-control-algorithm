@@ -4,6 +4,7 @@ from parameters_and_setup import EnsembleInfo
 import pickle
 import os
 import re
+from typing import Optional
 
 
 def open_payoff(path: str, beta_index):
@@ -19,7 +20,7 @@ def open_payoff(path: str, beta_index):
     return payoff_dat, payoff_dat_name[0]
 
 
-def plot_spatial_rank(package_name, beta_index, rank):
+def plot_spatial_rank(package_name, beta_index, rank, save: Optional[bool] = False):
     ens = EnsembleInfo(package_name)
     R0_map = get_R0_map(ens.raw_data, ens.R0_vs_rho_beta[beta_index], ens.rhos, coarse_grain_factor=5)
     R0_map = process_R0_map(R0_map, get_cluster=1)
@@ -31,7 +32,7 @@ def plot_spatial_rank(package_name, beta_index, rank):
     payoff_dat = open_payoff(ens.path2_payoff_data, beta_index)[0]
 
     msg = rf'$\beta$ = {round(ens.betas[beta_index], 6)}, rank = {rank}'
-    plot_spatial_payoff_rank(R0_map, payoff_dat, rank, title=msg)
+    plot_spatial_payoff_rank(R0_map, payoff_dat, rank, title=msg, save=save)
 
 
 def add_flag_to_payoff(package_name: str, beta_index: int, rank: int, flag: dict):
@@ -54,5 +55,4 @@ def add_flag_to_payoff(package_name: str, beta_index: int, rank: int, flag: dict
 
 
 if __name__ == '__main__':
-    # plot_spatial_rank('landscape_control_package_adb_full', beta_index=9,  rank=2)
-    add_flag_to_payoff('landscape_control_package_adb_full', beta_index=17, rank=2, flag={'skip_flag': True})
+    add_flag_to_payoff('landscape_control_package_adb_pl', beta_index=11, rank=5, flag={'skip_flag': True})

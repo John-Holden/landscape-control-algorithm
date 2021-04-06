@@ -287,7 +287,7 @@ def plot_payoff_efficiencies_1(payoff: np.ndarray, title: Optional[str] = None):
 
 
 def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: int,
-                             title: Optional[str] = None):
+                             title: Optional[str] = None, save: Optional[bool] = False):
     """
         For a given scenario, plot the map of the containment/
 
@@ -360,4 +360,7 @@ def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: in
 
     if title:
         plt.title(title)
+
+    if save:
+        plt.savefig('containment_scenario{}.pdf')
     plt.show()

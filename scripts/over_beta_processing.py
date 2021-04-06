@@ -53,14 +53,14 @@ def get_efficiency_over_beta(package_name: str, sample_size: int = 5, save: Opti
         np.save('fragmentation_payoff_over_beta', payoff)
 
     if plot:
-        plot_payoffs_over_beta(payoff, ensemble.betas, max_beta_index=16, save=save)
+        plot_payoffs_over_beta(payoff, ensemble.betas, save=save)
 
 
 
 def run_fragmentation_over_beta(package_name: str):
     ensemble = EnsembleInfo(package_name)
-    beta_ind = 5
-    iters = 7
+    beta_ind = 12
+    iters = 20
     print(f'Running beta {round(ensemble.betas[beta_ind], 5)}, for {iters} iterations ')
     c_frag = ClusterFrag(ensemble, cg_factor=5, beta_index=beta_ind, iterations=iters)
     result = c_frag.execute(plot=True)
@@ -116,4 +116,5 @@ def comp_cluster_sizes(package_names: List[str]):
 
 
 if __name__ == '__main__':
-    run_scenario_test_over_beta('landscape_control_package_adb_pl')
+    # run_fragmentation_over_beta('landscape_control_package_adb_pl')
+    run_scenario_test_over_beta('landscape_control_package_adb_pl', job_id=13)

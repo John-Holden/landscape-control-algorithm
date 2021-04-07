@@ -81,7 +81,7 @@ def run_scenario_test_over_beta(package_name: str, job_id: Union[None, str] = No
         if not scenario_test.is_valid:
             print(f'\t skipping beta index {beta_index}')
             return
-
+        print(f'Running beta index {beta_index}')
         scenario_test.find_all_payoffs(plot_check=False)
         return
 

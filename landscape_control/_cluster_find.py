@@ -22,7 +22,6 @@ def rank_cluster_map(R0_map: np.ndarray, get_ranks: Union[None, int, Iterable] =
 
     R0_clusters = label_connected(R0_map)[0]
     cluster_sizes, cluster_ids = cluster_freq_count(labeled=R0_clusters)
-
     if get_ranks is None:
         ranks = range(1, len(cluster_ids)+1)
     else:

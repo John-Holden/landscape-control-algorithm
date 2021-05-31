@@ -55,4 +55,4 @@ def add_flag_to_payoff(package_name: str, beta_index: int, rank: int, flag: dict
 
 
 if __name__ == '__main__':
-    add_flag_to_payoff('landscape_control_package_adb_pl', beta_index=11, rank=5, flag={'skip_flag': True})
+    add_flag_to_payoff('landscape_control_package_adb_pl_2', beta_index=12, rank=5, flag={'skip_flag': True})

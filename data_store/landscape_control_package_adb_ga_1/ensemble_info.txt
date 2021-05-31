@@ -1,0 +1,79 @@
+
+______Ensemble_______
+
+Notes : '...' 
+ 
+___Model parameters___
+	 - META_DATA : 
+	 - scale constant /alpha : 5 (m)
+	 - domain size L x L : 1000
+	 - simulation run time : 1825 (steps)
+	 - infectivity /beta : [0.0, 7.5e-05 | len = 21]
+	 - tree densities /rho : [0.0, 0.05 | len = 6]
+	 - epi_center : 500
+	 - initially infected : 25
+	 - epicenter_IC : distributed
+	 - dispersal constant /ell : 195 (m)
+	 - dispersal_model : gaussian
+	 - model : SEIR
+	 - ensemble_mode : True
+	 - R0_measure : {'type': 'seasonal', 'get_distances': False}
+	 - end_date : 2035-01-01 00:00:00
+	 - end_day : 1
+	 - end_mon : 1
+	 - exposed_lt_day : 1
+	 - exposed_lt_month : 11
+	 - exposed_lt_sd : 14
+	 - generation : 0
+	 - infectious_lt : {'distribution': 'exp', 'scale_yrs': 5, 'steps': 1825}
+	 - save_R0_history : True
+	 - sporulation : {'peak_str': ('Jun', 'September', 'Inclusive'), 'peak': (6, 10), 'type': 'linear', 'ga_sd': None}
+	 - start_date : 2020-01-01 00:00:00
+	 - start_day : 1
+	 - start_mon : 1
+	 - start_yr : 2020
+	 - years : 5
+	 - ensemble_size : 1
+
+___Settings___
+	 - plot : False
+	 - show : False
+	 - save_to_anim : False
+	 - plot_freq : None
+	 - verb : 0
+	 - ext : .png
+	 - percolation_bcd : False
+	 - max_generation_bcd : False
+
+___Metrics___
+	 - save_Frame : False
+	 - generation : False
+	 - save_max_d : False
+	 - save_end_time : False
+	 - save_R0_history : True
+	 - save_percolation : False
+	 - save_time_series : False
+	 - save_mortality_ratio : False
+
+______Time elapsed_______
+core 11 | Simulation done in:  14 (Hrs): 32 (mins): 30 (s)
+core 6 | Simulation done in:  14 (Hrs): 38 (mins): 2 (s)
+core 16 | Simulation done in:  14 (Hrs): 43 (mins): 8 (s)
+core 1 | Simulation done in:  14 (Hrs): 50 (mins): 17 (s)
+core 14 | Simulation done in:  14 (Hrs): 51 (mins): 53 (s)
+core 7 | Simulation done in:  14 (Hrs): 52 (mins): 20 (s)
+core 10 | Simulation done in:  15 (Hrs): 4 (mins): 34 (s)
+core 3 | Simulation done in:  15 (Hrs): 5 (mins): 29 (s)
+core 5 | Simulation done in:  15 (Hrs): 7 (mins): 26 (s)
+core 13 | Simulation done in:  15 (Hrs): 8 (mins): 3 (s)
+core 4 | Simulation done in:  15 (Hrs): 10 (mins): 20 (s)
+core 17 | Simulation done in:  15 (Hrs): 12 (mins): 47 (s)
+core 15 | Simulation done in:  15 (Hrs): 13 (mins): 29 (s)
+core 2 | Simulation done in:  15 (Hrs): 13 (mins): 34 (s)
+core 9 | Simulation done in:  15 (Hrs): 15 (mins): 52 (s)
+core 12 | Simulation done in:  15 (Hrs): 26 (mins): 18 (s)
+core 8 | Simulation done in:  15 (Hrs): 29 (mins): 35 (s)
+core 18 | Simulation done in:  15 (Hrs): 30 (mins): 19 (s)
+core 20 | Simulation done in:  15 (Hrs): 32 (mins): 55 (s)
+core 19 | Simulation done in:  15 (Hrs): 41 (mins): 34 (s)
+Ensemble size : 20

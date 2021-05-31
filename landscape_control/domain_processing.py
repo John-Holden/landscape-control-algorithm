@@ -2,10 +2,9 @@ import os
 import warnings
 import numpy as np
 
-from .plotting_methods import plot_R0_clusters
+from .plotting_methods import plot_R0_clusters, plot_R0_map
 
 from typing import Iterable, Union, Any
-from parameters_and_setup import EnsembleInfo
 from scipy.optimize import curve_fit
 from ._cluster_find import rank_cluster_map
 
@@ -24,6 +23,7 @@ def get_R0_gradient_fitting(species_distribution_map: np.ndarray, rhos: np.ndarr
     """
      For an array of R0 vs rho values, fit data to linear function. Then return tree-density mapped to R0-values.
     """
+
     popt, pcov = curve_fit(linear_func, rhos, R0_v_rho_mapping)
     if print_fitting:
         print(f'Fitted gradients {popt[0]}, Variance {pcov[0]}')
@@ -108,7 +108,7 @@ def process_R0_map(R0_map_raw: np.ndarray, get_cluster: int, threshold: Union[in
 
 
 def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1,
-                            save: bool = False, plot_clusters: bool = False) -> np.ndarray:
+                            save: bool = False, plot_clusters: bool = False, plot_R0_maps: bool = False) -> np.ndarray:
     """
     For each value of beta, find the top N ranked cluster size(s). Return an array of cluster sizes vs beta..
     """
@@ -118,21 +118,25 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
     for beta_index in range(len(ensemble.betas)):
         R0_vs_rho = ensemble.R0_vs_rho_beta[beta_index]
         R0_map = get_R0_gradient_fitting(species_distribution_map, ensemble.rhos, R0_vs_rho)
-
         if R0_map.max() < 1:
             cluster_sizes[beta_index] = 0
             continue
 
+        if plot_R0_maps:
+            beta_title = rf'$\beta =$, {round(ensemble.betas[beta_index], 7)}'
+            plot_R0_map(R0_map, save_name=f'R0_raw_beta_{beta_index}', title=beta_title, save=True)
+
         R0_map, sizes, _ = rank_cluster_map(R0_map > 1)
         cluster_sizes[beta_index] = sizes[get_rank - 1]
-
         if plot_clusters:
             flash = 7 <= beta_index <= 9
             beta_title = rf'$\beta =$, {round(ensemble.betas[beta_index], 7)}'
-            plot_R0_clusters(R0_map, rank=10, save=True, save_name=f'beta_{beta_index}', title=beta_title,
-                             flash=flash)
+            plot_R0_clusters(R0_map, rank=10, save=True, save_name=f'R0_clustering_beta_{beta_index}', title=beta_title,
+                             flash=flash, ext='pdf')
 
     cluster_sizes = cluster_sizes * cg_factor**2
+    print(f'cluster size {cluster_sizes}')
+
     if save:  # save cluster size in units km^2
         if os.path.exists(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta.npy'):
             msg = f'\n Overwriting data for : {ensemble.path_to_ensemble}/cluster_size_vs_beta'

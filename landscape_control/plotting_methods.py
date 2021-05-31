@@ -48,14 +48,22 @@ def plot_cluster_sizes_vs_beta(betas: Iterable, cluster_sizes: Iterable, cluster
     Plot how top cluster size varies with infectivity beta.
     """
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(betas, cluster_sizes)
-    ax.scatter(betas, cluster_sizes)
+    if type(cluster_sizes) == np.ndarray:
+        betas = [betas]
+        cluster_sizes = [cluster_sizes]
+    labels = ['Gaussian', 'power law']
+    for i in range(len(cluster_sizes)):
+        ax.plot(betas[i], cluster_sizes[i], label=f'{labels[i]}')
+        ax.scatter(betas[i], cluster_sizes[i])
+
     plt.xticks(rotation=15)
     plt.xlabel(r'$\beta$')
     plt.gcf().subplots_adjust(bottom=0.15)
     plt.ylabel(f"Rank {cluster_rank} cluster size km^2")
+    plt.legend()
+    plt.yscale('log')
     if save:
-        plt.savefig('cluster_sz_vs_beta', bbox_inches='tight')
+        plt.savefig('cluster_sz_vs_beta.pdf', bbox_inches='tight')
     plt.show()
 
 
@@ -98,7 +106,6 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
     Rank and plot clusters
     """
     # _, R0_map_background = None, None
-
     if isinstance(rank, int):
         R0_map_background = np.array(R0_map > 0).astype(int)
         R0_map, _, _ = rank_cluster_map(R0_map, get_ranks=rank)
@@ -121,9 +128,8 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
         colors.insert(0, 'lightgrey')
         colors.insert(1, 'white')
         nbins = cluster_number + 2
-    else:
-        colors.insert(0, 'white')
-        nbins = cluster_number + 1
+    else:  # Fix me...
+        raise NotImplementedError
 
     cmap_name = 'my_list'
     cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
@@ -144,13 +150,34 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
 
     if save:
         name = 'cluster_fig' if save_name is None else save_name
-        name = f'{name}{ext}'
+        name = f'{name}.{ext}'
         plt.savefig(name)
 
     if show:
         plt.show()
 
     plt.close()
+
+
+def plot_R0_map(R0_map: np.ndarray, save: bool = False, title: str = '', ext: str = 'pdf',
+                save_name : Union[None, str] = None):
+    """
+    Plot a raw R0-valued map, without clustering.
+    :param R0_map:
+    :return:
+    """
+
+    im = plt.imshow(np.where(R0_map<1, np.nan, R0_map), interpolation='nearest')
+    plt.colorbar(im)
+    plt.xticks([])
+    plt.yticks([])
+    plt.title(title)
+    if save:
+        name = save_name if save_name else 'R0-map'
+        plt.savefig(f'{name}.{ext}')
+    plt.show()
+    plt.close()
+
 
 
 def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, epi_c: Union[None, tuple] = None,
@@ -247,7 +274,7 @@ def process_payoffs(payoff_store: dict, plot: bool = False, title: Optional[str]
 
             if 'skip_flag' in result:
                 if result['skip_flag']:
-                    print('\t skipping', result)
+                    print(f"\t skipping rank {result['rank']}" )
                     continue
 
             N_saved.append(result['Ns'])
@@ -357,10 +384,30 @@ def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: in
     cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
     im = plt.imshow(R0_domain_, cmap=cm, alpha=0.80)
     plt.colorbar(im)
-
     if title:
         plt.title(title)
 
     if save:
         plt.savefig('containment_scenario{}.pdf')
+
+    plt.show()
+
+def plot_cluster_size_distribution(cluster_sizes: np.array, betas: np.ndarray, save: bool = False):
+    """
+    For a single domain, plot the cluster-size distribution
+    :param cluster_sizes:
+    :return:
+    """
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    assert len(betas) == len(cluster_sizes)
+    for i in range(len(betas)):
+        ax.plot(np.arange(1, len(cluster_sizes[i])+1), cluster_sizes[i], label=fr'$\beta$ = {round(betas[i], 6)}')
+        ax.scatter(np.arange(1, len(cluster_sizes[i])+1), cluster_sizes[i])
+
+    plt.legend()
+    plt.yscale('log')
+    plt.xscale('log')
+    if save:
+        plt.savefig('cluster_size_dist.pdf')
     plt.show()

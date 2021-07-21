@@ -27,6 +27,12 @@ def get_R0_gradient_fitting(species_distribution_map: np.ndarray, rhos: np.ndarr
     popt, pcov = curve_fit(linear_func, rhos, R0_v_rho_mapping)
     if print_fitting:
         print(f'Fitted gradients {popt[0]}, Variance {pcov[0]}')
+        import matplotlib.pyplot as plt
+        plt.plot(rhos, popt[0]*rhos)
+        plt.plot(rhos, R0_v_rho_mapping)
+        plt.title(f'grad  = {popt[0]}')
+        plt.show()
+
     return species_distribution_map * popt[0]
 
 
@@ -39,6 +45,9 @@ def coarse_grain(domain, cg_factor) -> np.ndarray:
     """
     if 1 in np.isnan(domain):
         domain = np.where(np.isnan(domain), 0, domain)
+
+    if cg_factor == 1:
+        return domain
 
     x_ind = 0
     new_xaxis = np.arange(0, domain.shape[0], cg_factor)
@@ -61,7 +70,7 @@ def coarse_grain(domain, cg_factor) -> np.ndarray:
 
 
 def get_R0_map(raw_species_data: np.ndarray, R0_vs_rho: np.ndarray,
-               rhos: np.ndarray, coarse_grain_factor: Union[None, int]=None) -> Union[None, np.ndarray]:
+               rhos: np.ndarray, coarse_grain_factor: int) -> Union[None, np.ndarray]:
     """
     Process a single domain, for one beta value, and return R0 map.
     """
@@ -70,10 +79,9 @@ def get_R0_map(raw_species_data: np.ndarray, R0_vs_rho: np.ndarray,
         warnings.warn(msg)
         return None
 
-    if coarse_grain_factor is not None:
-        raw_species_data_cg = coarse_grain(domain=raw_species_data, cg_factor=coarse_grain_factor)
-
-    return get_R0_gradient_fitting(raw_species_data_cg, rhos, R0_vs_rho)
+    # raw_species_data_cg = raw_species_data if coarse_grain_factor == 1 else coarse_grain(raw_species_data, coarse_grain_factor)
+    raw_species_data_cg = coarse_grain(raw_species_data, coarse_grain_factor)
+    return get_R0_gradient_fitting(raw_species_data_cg, rhos, R0_vs_rho, print_fitting=False)
 
 
 def trim_domain(domain: np.ndarray):
@@ -113,9 +121,10 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
     For each value of beta, find the top N ranked cluster size(s). Return an array of cluster sizes vs beta..
     """
     species_distribution_map = coarse_grain(domain=ensemble.raw_data, cg_factor=cg_factor)
-    cluster_sizes = np.zeros(len(ensemble.betas))
+    cluster_sizes = np.zeros(len(ensemble.betas)) if get_rank ==1 else np.zeros(shape=(len(ensemble.betas), get_rank))
 
     for beta_index in range(len(ensemble.betas)):
+        print(f'beta {beta_index}/{len(ensemble.betas)}')
         R0_vs_rho = ensemble.R0_vs_rho_beta[beta_index]
         R0_map = get_R0_gradient_fitting(species_distribution_map, ensemble.rhos, R0_vs_rho)
         if R0_map.max() < 1:
@@ -127,7 +136,7 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
             plot_R0_map(R0_map, save_name=f'R0_raw_beta_{beta_index}', title=beta_title, save=True)
 
         R0_map, sizes, _ = rank_cluster_map(R0_map > 1)
-        cluster_sizes[beta_index] = sizes[get_rank - 1]
+        cluster_sizes[beta_index] = sizes[:get_rank]
         if plot_clusters:
             flash = 7 <= beta_index <= 9
             beta_title = rf'$\beta =$, {round(ensemble.betas[beta_index], 7)}'
@@ -135,8 +144,6 @@ def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1
                              flash=flash, ext='pdf')
 
     cluster_sizes = cluster_sizes * cg_factor**2
-    print(f'cluster size {cluster_sizes}')
-
     if save:  # save cluster size in units km^2
         if os.path.exists(f'{ensemble.path_to_ensemble}/cluster_size_vs_beta.npy'):
             msg = f'\n Overwriting data for : {ensemble.path_to_ensemble}/cluster_size_vs_beta'

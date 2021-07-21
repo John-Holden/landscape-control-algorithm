@@ -1,0 +1,84 @@
+
+______Ensemble_______
+
+Notes : '...' 
+ 
+___Model parameters___
+2021-07-10 12:48:38.461057
+	 - META_DATA : 
+	 - scale constant /alpha : 5 (m)
+	 - L x L domain sizes  : [1000]
+	 - simulation run time : 1825 (steps)
+	 - infectivity /beta : [0, 1000 | len = 21]
+	 - tree densities /rho : [0.01, 0.05 | len = 5]
+	 - epi_center : 500
+	 - dispersal constant /ell : (205, 3.3) (m)
+	 - dispersal_model : power_law
+	 - dispersal_norm : True
+	 - model : SEIR
+	 - initial_conditions : {'init_n_infected': 10, 'distribution': 'centralised'}
+	 - R0_measure : {'type': 'seasonal', 'get_distances': False, 'save_1st_gen_only': True}
+	 - end_date : 2035-01-01 00:00:00
+	 - end_day : 1
+	 - end_mon : 1
+	 - exposed_lt_day : 1
+	 - exposed_lt_month : 11
+	 - exposed_lt_sd : 14
+	 - infectious_lt : {'distribution': 'exp', 'scale_yrs': 5, 'steps': 1825}
+	 - sporulation : {'peak_str': ('Jun', 'September', 'Inclusive'), 'peak': (6, 10), 'type': 'linear', 'ga_sd': 20, 'normed': True}
+	 - start_date : 2020-01-01 00:00:00
+	 - start_day : 1
+	 - start_mon : 1
+	 - start_yr : 2020
+	 - years : 5
+	 - ensemble_size : 5
+	 - ensemble_mode : True
+
+___Settings___
+	 - plot : False
+	 - show : False
+	 - save_to_anim : False
+	 - plot_freq : None
+	 - verb : 0
+	 - ext : .png
+	 - percolation_bcd : False
+	 - max_generation_bcd : False
+	 - hours_elapsed : 0
+	 - hpc_time_out : 172800
+	 - time_since_save : None
+	 - hpc_end_save_freq : 600
+	 - hpc_end_save_cutoff : 3600
+	 - path_to_progress : /nobackup/py13jh/tree_epi_dispersal/temp_dat_store/2021-07-10-R0_vs_tree_density-SEIR-hpc-pl-phi1/arc_logs/core_1_progress.txt
+
+___Metrics___
+	 - save_Frame : False
+	 - generation : False
+	 - save_max_d : False
+	 - save_end_time : False
+	 - save_R0_history : True
+	 - save_percolation : False
+	 - save_time_series : False
+	 - save_mortality_ratio : False
+
+______Time elapsed_______
+core 3 | Simulation done in:  6 (Hrs): 33 (mins): 12 (s)
+core 11 | Simulation done in:  6 (Hrs): 37 (mins): 43 (s)
+core 20 | Simulation done in:  6 (Hrs): 38 (mins): 41 (s)
+core 2 | Simulation done in:  6 (Hrs): 39 (mins): 7 (s)
+core 15 | Simulation done in:  6 (Hrs): 39 (mins): 34 (s)
+core 12 | Simulation done in:  6 (Hrs): 45 (mins): 46 (s)
+core 8 | Simulation done in:  6 (Hrs): 45 (mins): 56 (s)
+core 14 | Simulation done in:  6 (Hrs): 47 (mins): 21 (s)
+core 6 | Simulation done in:  6 (Hrs): 47 (mins): 35 (s)
+core 17 | Simulation done in:  6 (Hrs): 49 (mins): 21 (s)
+core 1 | Simulation done in:  6 (Hrs): 50 (mins): 0 (s)
+core 16 | Simulation done in:  6 (Hrs): 50 (mins): 38 (s)
+core 18 | Simulation done in:  6 (Hrs): 51 (mins): 9 (s)
+core 5 | Simulation done in:  6 (Hrs): 51 (mins): 35 (s)
+core 7 | Simulation done in:  6 (Hrs): 53 (mins): 26 (s)
+core 4 | Simulation done in:  6 (Hrs): 56 (mins): 38 (s)
+core 10 | Simulation done in:  6 (Hrs): 56 (mins): 46 (s)
+core 19 | Simulation done in:  6 (Hrs): 59 (mins): 25 (s)
+core 13 | Simulation done in:  7 (Hrs): 0 (mins): 47 (s)
+core 9 | Simulation done in:  7 (Hrs): 4 (mins): 4 (s)
+Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100Ensemble size : 100

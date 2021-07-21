@@ -8,9 +8,21 @@ STRUCTURING_ELEMENT1  = np.ones(shape=[3,3]) # defined nearest neighbourhood of 
 STRUCTURING_ELEMENT2  = np.ones(shape=[3,3])
 STRUCTURING_ELEMENT2[(0, 0, 2, 2), (0, 2, 0, 2)] = 0 # defined nearest neighbourhood of land patches.
 STRUCTURING_ELEMENTS = {'MOORE': STRUCTURING_ELEMENT1,
-                        'VON-N': STRUCTURING_ELEMENT2}
+                        'VON-N': STRUCTURING_ELEMENT2,
+                        "MOORE2": np.ones(shape=[4,4])}
 
 STRUCTURING_ELEMENT = STRUCTURING_ELEMENTS['MOORE']
+
+def set_structuring_element(structure_name: str) -> np.ndarray:
+    """
+
+    :param structure_name:
+    :return:
+    """
+    STRUCTURING_ELEMENT = STRUCTURING_ELEMENTS[structure_name]
+    print(f'setting element to {structure_name} \n {STRUCTURING_ELEMENT}')
+    return STRUCTURING_ELEMENT
+
 
 ENSEMBLES = {0: 'landscape_control_input_test_data',
              1: 'landscape_control_input_test_beta_cluster_sizes',

@@ -2,10 +2,12 @@ import pprint
 import warnings
 import numpy as np
 import matplotlib
+import seaborn as sns
 from typing import Optional
 import matplotlib.pyplot as plt
 from typing import Union, Iterable
 from matplotlib.colors import LinearSegmentedColormap
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from ._cluster_find import rank_cluster_map
 from parameters_and_setup import PATH_TO_INPUT_DATA
@@ -47,20 +49,22 @@ def plot_cluster_sizes_vs_beta(betas: Iterable, cluster_sizes: Iterable, cluster
     """
     Plot how top cluster size varies with infectivity beta.
     """
-    fig, ax = plt.subplots(figsize=(10, 6))
-    if type(cluster_sizes) == np.ndarray:
-        betas = [betas]
-        cluster_sizes = [cluster_sizes]
-    labels = ['Gaussian', 'power law']
-    for i in range(len(cluster_sizes)):
-        ax.plot(betas[i], cluster_sizes[i], label=f'{labels[i]}')
-        ax.scatter(betas[i], cluster_sizes[i])
+    fig, ax = plt.subplots(figsize=(7, 4))
 
-    plt.xticks(rotation=15)
+    sz = [5, 3, 1, 5, 3, 1]
+    c = [0, 1, 2, 0, 1, 2]
+    for i, cluster_size in enumerate(cluster_sizes):
+        ls = '-' if i < 3 else '--'
+        marker = 'o' if i < 3 else 'x'
+        # for rank in [0]:
+        #     ax.plot(betas, cluster_size[:, rank], label=f'rank {rank+1}', color=f'C{i}', ls=ls)
+        #     ax.scatter(betas, cluster_size[:, rank], s=30, marker=marker, c=f'C{i}')
+        ax.plot(betas, cluster_size, label=f'km {sz[i]}', color=f'C{c[i]}', ls=ls)
+        ax.scatter(betas, cluster_size, s=15, marker=marker, c=f'C{c[i]}')
+
     plt.xlabel(r'$\beta$')
-    plt.gcf().subplots_adjust(bottom=0.15)
-    plt.ylabel(f"Rank {cluster_rank} cluster size km^2")
-    plt.legend()
+    plt.ylabel(f"cluster size km^2")
+    # plt.legend()
     plt.yscale('log')
     if save:
         plt.savefig('cluster_sz_vs_beta.pdf', bbox_inches='tight')
@@ -99,43 +103,47 @@ def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarr
     return
 
 
-def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: Union[None, tuple] = None,
+def plot_R0_clusters(R0_map: np.ndarray, rank: int, cg_factor:int, epi_c: Union[None, tuple] = None,
                      show: bool = True, save: bool = False, save_name: Union[None, str] = None, ext: str = '.png',
                      title: str = "", flash: bool = False):
     """
-    Rank and plot clusters
+    Perform cluster-size ranking and plot imshow
     """
-    # _, R0_map_background = None, None
-    if isinstance(rank, int):
-        R0_map_background = np.array(R0_map > 0).astype(int)
-        R0_map, _, _ = rank_cluster_map(R0_map, get_ranks=rank)
-        R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background
 
-        if len(_) >= rank:
-            cluster_number = rank
+    # Rank clusters by their size and create color map
+    R0_map_background = np.array(R0_map > 0).astype(int)
 
-        elif rank > len(_) > 0:
-            msg = f'\nError, expected {rank} clusters, only found {len(_)}'
-            warnings.warn(msg)
-            cluster_number = len(_)
-        else:
-            raise NoClustersDetcted
+
+    R0_map, sizes, _ = rank_cluster_map(R0_map, get_ranks=rank)
+    print(f'size {sizes[0] * cg_factor**2}')
+    if len(sizes) == 1 and sizes[0] < 10:
+        raise Exception('R0_map < 1, should be zero.')
+
+    R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background # take away background points
+
+    if len(_) >= rank:
+        cluster_number = rank
+
+    elif rank > len(_) > 0:
+        msg = f'\nError, expected {rank} clusters, only found {len(_)}'
+        warnings.warn(msg)
+        cluster_number = len(_)
+    else:
+        raise NoClustersDetcted
 
     colors = [f'C{i}' for i in range(len(np.unique(R0_map)) - 1)]
-
-    if rank is not None and isinstance(rank, int):  # Plot back-ground as grey
-        R0_map = R0_map + R0_map_background
-        colors.insert(0, 'lightgrey')
-        colors.insert(1, 'white')
-        nbins = cluster_number + 2
-    else:  # Fix me...
-        raise NotImplementedError
+    R0_map = R0_map + R0_map_background
+    colors.insert(0, 'lightgrey')
+    colors.insert(1, 'white')
+    nbins = cluster_number + 2
 
     cmap_name = 'my_list'
+    fig, ax = plt.subplots(figsize=(9, 10))
     cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
     im = plt.imshow(R0_map, cmap=cm, interpolation='nearest')
     plt.colorbar(im)
     plt.title(title)
+    plt.axis(False)
     plt.xticks([])
     plt.yticks([])
 
@@ -151,6 +159,7 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: Union[None, int] = None, epi_c: U
     if save:
         name = 'cluster_fig' if save_name is None else save_name
         name = f'{name}.{ext}'
+        plt.tight_layout()
         plt.savefig(name)
 
     if show:
@@ -166,14 +175,18 @@ def plot_R0_map(R0_map: np.ndarray, save: bool = False, title: str = '', ext: st
     :param R0_map:
     :return:
     """
-
-    im = plt.imshow(np.where(R0_map<1, np.nan, R0_map), interpolation='nearest')
-    plt.colorbar(im)
+    fig, ax = plt.subplots(figsize=(9, 10))
+    ax.set_axis_off()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("bottom", size="5%", pad=0.05)
+    im = ax.imshow(np.where(R0_map<1, np.nan, R0_map), interpolation='nearest')
+    plt.colorbar(im, cax=cax, orientation='horizontal')
     plt.xticks([])
     plt.yticks([])
     plt.title(title)
     if save:
         name = save_name if save_name else 'R0-map'
+        plt.tight_layout()
         plt.savefig(f'{name}.{ext}')
     plt.show()
     plt.close()
@@ -392,7 +405,7 @@ def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: in
 
     plt.show()
 
-def plot_cluster_size_distribution(cluster_sizes: np.array, betas: np.ndarray, save: bool = False):
+def plot_cluster_size_distribution(cluster_sizes: np.array, betas: np.ndarray, save: bool = False, save_name: str =''):
     """
     For a single domain, plot the cluster-size distribution
     :param cluster_sizes:
@@ -401,13 +414,114 @@ def plot_cluster_size_distribution(cluster_sizes: np.array, betas: np.ndarray, s
 
     fig, ax = plt.subplots(figsize=(8, 6))
     assert len(betas) == len(cluster_sizes)
-    for i in range(len(betas)):
-        ax.plot(np.arange(1, len(cluster_sizes[i])+1), cluster_sizes[i], label=fr'$\beta$ = {round(betas[i], 6)}')
-        ax.scatter(np.arange(1, len(cluster_sizes[i])+1), cluster_sizes[i])
+    c=0
+    for i in [0, 1]:
+        print(f'beta = {betas[i]}')
+        # ax.plot(np.arange(1, len(cluster_sizes[i])+1), cluster_sizes[i], label=fr'$\beta$ = {round(betas[i], 6)}')
+        # ax.scatter(np.arange(1, len(cluster_sizes[i])+1), cluster_sizes[i])
+        sns.histplot(data=cluster_sizes[i], log_scale=True, color=f'C{c}', stat='frequency', fill=True, ax=ax)
+        c+=1
 
+    plt.yscale('log')
     plt.legend()
+    if save:
+        save_name = 'cluster_size_dist-1' if save_name =='' else save_name
+        plt.savefig(f'{save_name}.pdf')
+    plt.show()
+
+    c=0
+    fig, ax = plt.subplots(figsize=(5, 5))
+    for i in [0, 1]:
+        print(f'beta = {betas[i]}')
+        clusters = cluster_sizes[i][:25]
+        ax.plot(np.arange(1, len(clusters)+1), clusters[::-1], label=fr'$\beta$ = {round(betas[i], 6)}')
+        ax.scatter(np.arange(1, len(clusters)+1), clusters[::-1])
+        c+=1
+
+    plt.yscale('log')
+    # plt.xscale('log')
+    plt.legend()
+    if save:
+        plt.savefig('cluster_size_dist-2.pdf')
+    plt.show()
+
+
+def host_density_map(density_map: np.ndarray):
+    """
+
+    :param density_map:
+    :return:
+    """
+    fig, ax = plt.subplots(figsize=(9, 10))
+    # ax.set_axis_off()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("bottom", size="5%", pad=0.25)
+    density_map = np.where(density_map==0, np.nan, density_map)
+    density_map = np.where(density_map>0.10, 0.10, density_map)
+    im = ax.imshow(density_map)
+    plt.colorbar(im, cax=cax, orientation='horizontal')
+    ax.scatter([510, 520, 510, 520], [680, 680, 690, 690], s=5, c='r')
+    plt.savefig('host-density-map.pdf')
+    plt.show()
+
+    fig, ax = plt.subplots(figsize=(9, 10))
+    # ax.set_axis_off()
+    # ax = ax.imshow(density_map[680:690, 510:520], vmax=0.10, cmap='viridis')  # cg = 1
+    # ax = ax.imshow(density_map[int(680/5):int(690/5), int(510/5):int(520/5)], vmax=0.10, cmap='viridis')
+    ax = sns.heatmap(density_map[int(680/5):int(690/5), int(510/5):int(520/5)], vmax=0.10, cmap='viridis', ax=ax, annot=True)
+    # ax.set_aspect('auto')
+    plt.savefig('close-up.pdf')
+    plt.show()
+
+
+def host_distribution_flat(data: np.ndarray, print_stats: bool=False):
+    """
+    Plot the flat density distribution of tree density
+    :param data:
+    :param print_stats:
+    :return:
+    """
+    from scipy.optimize import curve_fit
+
+    fig, ax = plt.subplots(figsize=(8, 4))
+    sns.histplot(data, log_scale=False, stat='density', ax=ax, alpha=0.50, edgecolor=None)
+    sns.kdeplot(data, color='red', ls='--')
+
+    avg = data.mean()
+    l_qtl = np.percentile(data, 25)
+    median = np.percentile(data, 50)
+    u_qtl = np.percentile(data, 75)
+
+    plt.xlim(0, 0.10)
+    plt.xticks([])
+    plt.savefig('ash-density.pdf')
+    plt.show()
+
+    if print_stats:
+        print(f'mean = {avg}')
+        print(f'25 percentile {l_qtl}')
+        print(f'50 percentile {median}')
+        print(f'75 percentile {u_qtl}')
+
+    def inverse_power_law(xdata, k):
+        return xdata**(-k)
+
+    fig, ax = plt.subplots(figsize=(5, 4))
+    data = np.delete(data, np.where(data < 0.01))
+    data = np.delete(data, np.where(data > 0.15))
+    counts, rhos = np.histogram(data, bins='auto')
+    plt.plot(rhos[:-1], counts, alpha=1)
+    # plt.scatter(rhos[:-1], counts, c='r', s=2)
+    rhos = np.linspace(0.01, 0.15, len(counts))
+    pout, pcov = curve_fit(inverse_power_law, rhos, counts)
+    plt.plot(rhos, inverse_power_law(rhos, k=pout[0]), c='black', ls='--', alpha=1)
     plt.yscale('log')
     plt.xscale('log')
-    if save:
-        plt.savefig('cluster_size_dist.pdf')
+    plt.savefig('tree-density-power-law.pdf')
     plt.show()
+
+
+
+
+
+

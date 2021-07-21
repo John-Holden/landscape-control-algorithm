@@ -97,11 +97,14 @@ def run_scenario_test_over_beta(package_name: str, job_id: Union[None, str] = No
         scenario_test.find_all_payoffs(plot_check=False)
 
 
-def cluster_size_over_beta(package_name: str, savefig: Optional[bool]=False):
+def cluster_size_over_beta(package_name: str, cg: int, save_fig: Optional[bool]=False):
+    from parameters_and_setup import STRUCTURING_ELEMENT
+    print(f'Structuring element \n {STRUCTURING_ELEMENT}')
+
     ensemble = EnsembleInfo(package_name)
-    cluster_sizes = get_clusters_over_betas(ensemble, plot_clusters=False, plot_R0_maps=False)
-    np.save(f'{ensemble.path_to_ensemble}/cluster_sizes', cluster_sizes)
-    plot_cluster_sizes_vs_beta(ensemble.betas, cluster_sizes, save=savefig)
+    cluster_sizes = get_clusters_over_betas(ensemble, plot_clusters=False, plot_R0_maps=False, cg_factor=cg, get_rank=5)
+    np.save(f'{ensemble.path_to_ensemble}/cluster_sizes-Moore-{cg}km', cluster_sizes)
+    plot_cluster_sizes_vs_beta(cluster_sizes=cluster_sizes, betas=ensemble.betas, save=save_fig)
 
 
 def comp_cluster_sizes(package_names: List[str]):
@@ -115,25 +118,30 @@ def comp_cluster_sizes(package_names: List[str]):
     plot_cluster_size_comparison_over_beta(cluster_dat, beta_dat, save=True)
 
 
-def plot_multi_cluster_size_over_beta(ensembles: list):
+def plot_multi_cluster_size_over_beta(ensemble: list):
     """
 
     :param ens1:
     :param ens2:
     :return:
     """
-    ens1, ens2 = ensembles
-    cluster_sizes1 = np.load(f'{PATH_TO_INPUT_DATA}/{ens1}/cluster_sizes.npy')
-    cluster_sizes2 = np.load(f'{PATH_TO_INPUT_DATA}/{ens2}/cluster_sizes.npy')
-    betas1 = np.load(f'{PATH_TO_INPUT_DATA}/{ens1}/betas.npy')
-    betas2 = np.load(f'{PATH_TO_INPUT_DATA}/{ens2}/betas.npy')
+    clusters = np.zeros(shape=(6, 21))
+    c = 0
+    for i in range(2):
+        name = 'Moore' if i == 0 else 'vonN'
+        for sz in [5, 3, 1]:
+            clusters[c] = np.load(f'{PATH_TO_INPUT_DATA}/{ensemble[0]}/cluster_sizes-{name}-{sz}km.npy')[:, 0]
+            c+=1
 
-    plot_cluster_sizes_vs_beta(cluster_sizes=[cluster_sizes1, cluster_sizes2],
-                               betas=[betas1, betas2], save=True)
+    # clusters1 = [np.load(f'{PATH_TO_INPUT_DATA}/{ensemble[0]}/cluster_sizes-Moore-{i}km.npy') for i in (5, 3, 1)]
+    # clusters2 = [np.load(f'{PATH_TO_INPUT_DATA}/{ensemble[0]}/cluster_sizes-vonN-{i}km.npy') for i in (5, 3, 1)]
+    # clusters = [np.load(f'{PATH_TO_INPUT_DATA}/{ensemble[0]}/{name}') for name in ['cluster_sizes-Moore-5km.npy', 'cluster_sizes-vonN-5km.npy']]
+
+    betas = np.load(f'{PATH_TO_INPUT_DATA}/{ensemble[0]}/betas.npy')
+    plot_cluster_sizes_vs_beta(cluster_sizes=clusters, betas=betas, save=True)
 
 
 if __name__ == '__main__':
     # get_efficiency_over_beta('landscape_control_package_adb_pl', save=True)
-    cluster_size_over_beta('landscape_control_package_adb_pl_phi2')
-    # plot_multi_cluster_size_over_beta(['landscape_control_package_adb_ga_1',
-    #                                   'landscape_control_package_adb_pl_2'])
+    cluster_size_over_beta('landscape_control_package_2021-07-12_ga-phi2', cg=2)
+    plot_multi_cluster_size_over_beta(['landscape_control_package_2021-07-10_ga-phi1'])

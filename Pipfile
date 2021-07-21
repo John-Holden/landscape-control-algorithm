@@ -8,6 +8,7 @@ numpy = "*"
 scipy = "*"
 matplotlib = "*"
 pickle5 = "*"
+seaborn = "*"
 
 [dev-packages]
 

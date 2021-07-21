@@ -19,12 +19,22 @@ def open_payoff(path: str, beta_index):
 
     return payoff_dat, payoff_dat_name[0]
 
+def plot_R0_map(ens:str, beta_index:int, rank:Optional=None, plot:bool=False, cg_factor:int = 5):
+    from landscape_control.plotting_methods import plot_R0_clusters, plot_R0_map
+    print(f'beta = {ens.betas[beta_index]}')
+    R0_map = get_R0_map(ens.raw_data, ens.R0_vs_rho_beta[beta_index], ens.rhos, cg_factor)
+    if plot:
+        import numpy as np
+        plot_R0_clusters(np.where(R0_map < 1, 0, R0_map), rank=rank, save=True, ext='pdf', cg_factor=cg_factor)
+        plot_R0_map(R0_map, save=True)
+
+    assert 0
+    R0_map = process_R0_map(R0_map, get_cluster=1)
+    return R0_map
 
 def plot_spatial_rank(package_name, beta_index, rank, save: Optional[bool] = False):
     ens = EnsembleInfo(package_name)
-    R0_map = get_R0_map(ens.raw_data, ens.R0_vs_rho_beta[beta_index], ens.rhos, coarse_grain_factor=5)
-    R0_map = process_R0_map(R0_map, get_cluster=1)
-
+    R0_map = plot_R0_map(ens, beta_index, plot=False)
     if R0_map is None:
         print('Trivial map')
         return
@@ -36,6 +46,9 @@ def plot_spatial_rank(package_name, beta_index, rank, save: Optional[bool] = Fal
 
 
 def add_flag_to_payoff(package_name: str, beta_index: int, rank: int, flag: dict):
+    # add a flag to the pay off data, either skip or ...?
+    # usage:
+    # add_flag_to_payoff('landscape_control_package_adb_pl_2', beta_index=12, rank=5, flag={'skip_flag': True})
     ens = EnsembleInfo(package_name)
     payoff_dat, payoff_dat_name = open_payoff(ens.path2_payoff_data, beta_index)
     for epic, payoffs in payoff_dat.items():
@@ -55,4 +68,5 @@ def add_flag_to_payoff(package_name: str, beta_index: int, rank: int, flag: dict
 
 
 if __name__ == '__main__':
-    add_flag_to_payoff('landscape_control_package_adb_pl_2', beta_index=12, rank=5, flag={'skip_flag': True})
+    ens = EnsembleInfo('landscape_control_package_2021-07-10_ga-phi1')
+    plot_R0_map(ens, beta_index=10, rank=1, plot=True, cg_factor=1)

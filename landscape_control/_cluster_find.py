@@ -2,26 +2,27 @@ import numpy as np
 import sys
 import warnings
 from scipy.ndimage import label
-from typing import Union, Tuple, List, Iterable
+from typing import Union, Tuple, List, Iterable, Optional
 
-from parameters_and_setup import STRUCTURING_ELEMENT
+from parameters_and_setup import STRUCTURING_ELEMENT, set_structuring_element
 
 
-def rank_cluster_map(R0_map: np.ndarray, get_ranks: Union[None, int, Iterable] = None) \
-        -> Union[None, Tuple[np.ndarray, List, List]]:
+def rank_cluster_map(R0_map: np.ndarray, get_ranks: Union[None, int, Iterable] = None,
+                     structure: Optional = None) -> Union[None, Tuple[np.ndarray, List, List]]:
     """
     Find connected clusters and return rank-ordered size along with corresponding  id.
     If get ranks is an int, the rank upto and included the value `get_ranks' is returned.
     If a tuple is supplied, just those ranks will be returned.
     """
-
     if not np.any(R0_map):
         msg = 'R0 map contains only zeros'
         warnings.warn(msg)
         return None
 
-    R0_clusters = label_connected(R0_map)[0]
+    R0_clusters = label_connected(R0_map, structure)[0]
+
     cluster_sizes, cluster_ids = cluster_freq_count(labeled=R0_clusters)
+
     if get_ranks is None:
         ranks = range(1, len(cluster_ids)+1)
     else:
@@ -48,8 +49,8 @@ def rank_cluster_map(R0_map: np.ndarray, get_ranks: Union[None, int, Iterable] =
     return R0_clusters_, cluster_sizes, cluster_ids
 
 
-def label_connected(R0_map: np.ndarray) -> Tuple:
-    labeled, num_comp = label(R0_map, STRUCTURING_ELEMENT)
+def label_connected(R0_map: np.ndarray, structure = None) -> Tuple:
+    labeled, num_comp = label(R0_map) if structure is None else label(R0_map, set_structuring_element(structure))
     return labeled, num_comp
 
 

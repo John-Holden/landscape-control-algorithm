@@ -12,8 +12,6 @@ from landscape_control.domain_processing import get_clusters_over_betas
 from landscape_control.plotting_methods import process_payoffs, plot_payoffs_over_beta, plot_cluster_sizes_vs_beta
 
 
-
-
 def get_efficiency_over_beta(package_name: str, sample_size: int = 5, save: Optional[bool] = False,
                              plot: Optional[bool] = True, beta_indices: Optional[list] = None):
     """
@@ -59,15 +57,68 @@ def get_efficiency_over_beta(package_name: str, sample_size: int = 5, save: Opti
         plot_payoffs_over_beta(payoff, ensemble.betas, save=save)
 
 
-
 def run_fragmentation_over_beta(package_name: str):
     ensemble = EnsembleInfo(package_name)
-    beta_ind = 12
-    iters = 20
-    print(f'Running beta {round(ensemble.betas[beta_ind], 5)}, for {iters} iterations ')
-    c_frag = ClusterFrag(ensemble, cg_factor=5, beta_index=beta_ind, iterations=iters)
-    result = c_frag.execute(plot=True)
-    print(f'success : {result} ')
+    beta_inds = [i for i in range(5, 20) if i not in [18]]
+    cg_factor = 3
+    iters = [25 for i in range(len(beta_inds))]
+
+    for i, beta_ind in enumerate(beta_inds):
+        print(f'Running beta {round(ensemble.betas[beta_ind], 5)}, for {iters[i]} iterations ')
+        c_frag = ClusterFrag(ensemble, cg_factor=cg_factor, beta_index=beta_ind, iterations=iters[i])
+        result = c_frag.execute(plot=False)
+        print(f'success : {result} ')
+
+
+def get_plot_cluster_size_vs_fragmentation(package_name: str):
+    """
+    Load, and plot, the cluster size decarease with each fragmentation iteration
+    :param package_name:
+    :return:
+    """
+    import json
+    ensemble = EnsembleInfo(package_name)
+    iters = 25
+    beta_ind = [5, 8, 10, 13, 16]
+    cg_factor = 3
+    sizes = np.zeros(shape=(len(beta_ind), iters))
+    for i, beta in enumerate(beta_ind):
+        if not os.path.exists(f'{ensemble.path2_culled_indices}'):
+            raise Exception(f'beta: {beta} not found -- re-run fragmentation!')
+
+        filename = f'{ensemble.path2_culled_indices}/Fex_cg_{cg_factor}_beta_{beta}_iterations_{iters}.json'
+        with open(filename, 'r') as fragmentation_data:
+            data = json.load(fragmentation_data)
+
+        for iteration in range(iters):
+            sizes[i][iteration] = data[f'{iteration}_size']
+
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from scipy.optimize import curve_fit
+
+    def inverser_power_law(xdata, c, exponent):
+        return c * xdata ** (-exponent)
+
+    sns.set_theme(style='whitegrid')
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    for i, beta in enumerate(beta_ind):
+        xdata = np.arange(1, len(sizes[i])+1, 1)
+        pout, pcov = curve_fit(inverser_power_law, xdata=xdata, ydata=sizes[i])
+        ax.scatter(xdata, sizes[i])
+        ax.plot(xdata, sizes[i], label=f'beta = {ensemble.betas[beta]} a = {round(pout[0], 3)}, k = {round(pout[1], 3)}')
+        ax.plot(xdata, inverser_power_law(xdata, pout[0], pout[1]), c=f'C{i}', ls='--')
+
+    plt.legend()
+    plt.grid(False)
+    plt.yscale('log')
+    plt.xscale('log')
+    plt.tick_params(labelsize=20)
+    plt.savefig('fragmentation-size-decrease.pdf')
+    plt.show()
+
+    assert 0
 
 
 def run_scenario_test_over_beta(package_name: str, job_id: Union[None, str] = None):
@@ -88,7 +139,7 @@ def run_scenario_test_over_beta(package_name: str, job_id: Union[None, str] = No
         scenario_test.find_all_payoffs(plot_check=False)
         return
 
-    for beta_index in [1,2,3,4,5]:
+    for beta_index in [1, 2, 3, 4, 5]:
         scenario_test = ScenarioTest(package_name, beta_index)
         if not scenario_test.is_valid:
             print(f'skipping beta index {beta_index}')
@@ -131,7 +182,7 @@ def plot_multi_cluster_size_over_beta(ensemble: list):
         name = 'Moore' if i == 0 else 'vonN'
         for sz in [5, 3, 1]:
             clusters[c] = np.load(f'{PATH_TO_INPUT_DATA}/{ensemble[0]}/cluster_sizes-{name}-{sz}km.npy')[:, 0]
-            c+=1
+            c += 1
 
     # clusters1 = [np.load(f'{PATH_TO_INPUT_DATA}/{ensemble[0]}/cluster_sizes-Moore-{i}km.npy') for i in (5, 3, 1)]
     # clusters2 = [np.load(f'{PATH_TO_INPUT_DATA}/{ensemble[0]}/cluster_sizes-vonN-{i}km.npy') for i in (5, 3, 1)]
@@ -142,6 +193,8 @@ def plot_multi_cluster_size_over_beta(ensemble: list):
 
 
 if __name__ == '__main__':
+    get_plot_cluster_size_vs_fragmentation('landscape_control_package_2021-07-10_ga-phi1')
+    # run_fragmentation_over_beta('landscape_control_package_2021-07-10_ga-phi1')
     # get_efficiency_over_beta('landscape_control_package_adb_pl', save=True)
-    cluster_size_over_beta('landscape_control_package_2021-07-12_ga-phi2', cg=2)
-    plot_multi_cluster_size_over_beta(['landscape_control_package_2021-07-10_ga-phi1'])
+    # cluster_size_over_beta('landscape_control_package_2021-07-12_ga-phi2', cg=2)
+    # plot_multi_cluster_size_over_beta(['landscape_control_package_2021-07-10_ga-phi1'])

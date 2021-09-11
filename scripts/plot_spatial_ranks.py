@@ -26,7 +26,7 @@ def plot_R0_map(ens:str, beta_index:int, rank:Optional=None, plot:bool=False, cg
     if plot:
         import numpy as np
         plot_R0_clusters(np.where(R0_map < 1, 0, R0_map), rank=rank, save=True, ext='pdf', cg_factor=cg_factor)
-        plot_R0_map(R0_map, save=True)
+        # plot_R0_map(R0_map, save=True)
 
     assert 0
     R0_map = process_R0_map(R0_map, get_cluster=1)
@@ -66,7 +66,6 @@ def add_flag_to_payoff(package_name: str, beta_index: int, rank: int, flag: dict
                     pickle.dump(payoff_dat, handle, protocol=pickle.HIGHEST_PROTOCOL)
                     return
 
-
 if __name__ == '__main__':
     ens = EnsembleInfo('landscape_control_package_2021-07-10_ga-phi1')
-    plot_R0_map(ens, beta_index=10, rank=1, plot=True, cg_factor=1)
+    plot_R0_map(ens, beta_index=10, rank=3, plot=True, cg_factor=1)

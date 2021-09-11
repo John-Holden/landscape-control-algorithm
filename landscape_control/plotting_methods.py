@@ -87,6 +87,7 @@ def plot_cluster_size_comparison_over_beta(cluster_sz_dat: list, beta_dat:list, 
         plt.savefig('cluster_size_ga_pl_comp.pdf')
     plt.show()
 
+
 def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarray],
                                largest_cluster_size_vs_alpha: np.ndarray,
                                discontinuity_index: Union[int, None] = None):
@@ -103,7 +104,7 @@ def plot_cluster_size_vs_alpha(iteration: int, alpha_steps: Union[list, np.ndarr
     return
 
 
-def plot_R0_clusters(R0_map: np.ndarray, rank: int, cg_factor:int, epi_c: Union[None, tuple] = None,
+def plot_R0_clusters(R0_map: np.ndarray, rank: int, cg_factor: Optional = None, epi_c: Union[None, tuple] = None,
                      show: bool = True, save: bool = False, save_name: Union[None, str] = None, ext: str = '.png',
                      title: str = "", flash: bool = False):
     """
@@ -113,17 +114,17 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: int, cg_factor:int, epi_c: Union[
     # Rank clusters by their size and create color map
     R0_map_background = np.array(R0_map > 0).astype(int)
 
-
     R0_map, sizes, _ = rank_cluster_map(R0_map, get_ranks=rank)
-    print(f'size {sizes[0] * cg_factor**2}')
+    if cg_factor:
+        print(f'Largest R0 cluster size: {sizes[0] * cg_factor ** 2}')
+
     if len(sizes) == 1 and sizes[0] < 10:
         raise Exception('R0_map < 1, should be zero.')
 
-    R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background # take away background points
+    R0_map_background = np.array(R0_map > 0).astype(int) - R0_map_background  # take away background points
 
     if len(_) >= rank:
         cluster_number = rank
-
     elif rank > len(_) > 0:
         msg = f'\nError, expected {rank} clusters, only found {len(_)}'
         warnings.warn(msg)
@@ -132,20 +133,18 @@ def plot_R0_clusters(R0_map: np.ndarray, rank: int, cg_factor:int, epi_c: Union[
         raise NoClustersDetcted
 
     colors = [f'C{i}' for i in range(len(np.unique(R0_map)) - 1)]
-    R0_map = R0_map + R0_map_background
-    colors.insert(0, 'lightgrey')
-    colors.insert(1, 'white')
-    nbins = cluster_number + 2
+    # R0_map = R0_map + R0_map_background
+    colors.insert(0, 'white')
+    # if cluster_number > 1:
+    #     colors.insert(0, 'lightgrey')
 
-    cmap_name = 'my_list'
-    fig, ax = plt.subplots(figsize=(9, 10))
-    cm = LinearSegmentedColormap.from_list(cmap_name, colors, N=nbins)
+    nbins = cluster_number + 2 if cluster_number > 1 else cluster_number + 1
+    nbins = cluster_number + 1
+
+    cm = LinearSegmentedColormap.from_list('cluster_cmap', colors, N=nbins)
     im = plt.imshow(R0_map, cmap=cm, interpolation='nearest')
     plt.colorbar(im)
     plt.title(title)
-    plt.axis(False)
-    plt.xticks([])
-    plt.yticks([])
 
     if flash:
         matplotlib.rc('axes', edgecolor='r')
@@ -192,9 +191,8 @@ def plot_R0_map(R0_map: np.ndarray, save: bool = False, title: str = '', ext: st
     plt.close()
 
 
-
 def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, epi_c: Union[None, tuple] = None,
-                           show_text: bool = False):
+                           show_text: bool = False, save:bool= False):
     """
     `Plot the domain after it has been fragmented
     :param fragmented_domain: a spatial map of identified patche
@@ -240,9 +238,9 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
             N_points = len(line_ind[0])
             x, y = line_ind[0].sum() / N_points, line_ind[1].sum() / N_points
             plt.text(y, x, f'{frag_line}', c='b', size=10)
-
+    if save:
+        plt.savefig('fragmented-clusters.pdf')
     plt.show()
-    return
 
 
 def plot_payoffs_over_beta(payoff: np.ndarray, betas: np.ndarray, max_beta_index: Optional[int] = None,
@@ -404,6 +402,17 @@ def plot_spatial_payoff_rank(R0_domain: np.ndarray, payoff_store: dict, rank: in
         plt.savefig('containment_scenario{}.pdf')
 
     plt.show()
+
+
+def plot_cluster_size_with_xi(alpha_steps, ranks, cluster_sizes_vs_alpha):
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for i in range(ranks):
+        ax.plot(alpha_steps, cluster_sizes_vs_alpha[:, i])
+        ax.scatter(alpha_steps, cluster_sizes_vs_alpha[:, i])
+    plt.yscale('log')
+    plt.tick_params(labelsize=15)
+    plt.show()
+
 
 def plot_cluster_size_distribution(cluster_sizes: np.array, betas: np.ndarray, save: bool = False, save_name: str =''):
     """

@@ -44,7 +44,7 @@ class ClusterFrag:
                 return None
 
             R0_processed = process_R0_map(R0_raw, get_cluster=1)
-            print('map size : ', np.count_nonzero(R0_processed))
+            print('map size @ R0=1: ', np.count_nonzero(R0_processed))
 
             if is_too_small(R0_processed) or R0_processed.max() < 1:  # Trivial map: too small/R0 too low to process
                 np.save(self.path2_R0_processed, ())
@@ -75,21 +75,24 @@ class ClusterFrag:
         fragmented_domain = np.zeros_like(R0_map)
 
         if plot:
-            plot_R0_clusters(rank_cluster_map(R0_map)[0], rank=1)
+            plot_R0_clusters(rank_cluster_map(R0_map)[0], rank=1, cg_factor=self.cg_factor)
 
         R0_target = np.copy(R0_map)
         time = datetime.datetime.now()
         for iteration in range(self.iterations):
-            print(f'iteration {iteration}')
-            connector_patch_indices = alpha_stepping_method(R0_target)
+            print(f'\t iteration {iteration}')
+            connector_patch_indices = alpha_stepping_method(R0_target, debug=False)
             connecting_patches[iteration] = connector_patch_indices
-            R0_target = update_fragmentation_target(R0_map, connector_patch_indices)
+            R0_target = update_fragmentation_target(R0_map, connector_patch_indices)  # Update next fragmentation target
             R0_target = R0_target * R0_map
+            connecting_patches[f'{iteration}_size'] = len(np.where(R0_target)[0]) * self.cg_factor**2
             fragmented_domain[connector_patch_indices] = iteration + 1
 
-        if plot:
-            plt.title(f'Fragmented to {self.iterations} iterations')
-            plot_fragmented_domain(fragmented_domain, R0_map)
+            if plot:
+                plt.title(f'Fragmented to {self.iterations} iterations')
+                plot_fragmented_domain(fragmented_domain, R0_map, save=True)
+                plot_R0_clusters(np.where(R0_map > 1, 1, 0) * np.where(fragmented_domain, 0, 1), rank=iteration+2,
+                                 cg_factor=3, save_name=f'frag_{iteration}', ext='.pdf', save=True)
 
         print(f'Time taken to fragment {self.iterations} iterations: {datetime.datetime.now() - time}')
         return connecting_patches, fragmented_domain

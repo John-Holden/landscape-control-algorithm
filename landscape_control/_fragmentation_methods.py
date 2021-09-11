@@ -47,13 +47,13 @@ def patch_tidy(R0_map: np.ndarray, cluster_targets: np.ndarray, connector_patche
         raise ClustersDidNotFragmentError
 
 
-def find_alpha_discontinuities(alpha_steps, R0_map):
+def find_alpha_discontinuities(alpha_steps, R0_map, record_ranks: int = 3, plot_cluster_sizes_over_step: bool = False):
     """
     Find how the maximum-cluster size changes over the alpha-thresholding procedure. Return cluster-size vs alpha.
     """
 
     joins_at_alpha = {}
-    largest_cluster_size = np.zeros(len(alpha_steps))
+    cluster_sizes_vs_alpha = np.zeros(shape=(len(alpha_steps), record_ranks))
     for index in range(len(alpha_steps)-1):
         # Iterate through alpha and find where clusters join to form larger clusters.
         R0_map_alpha = np.where(R0_map > alpha_steps[index], 1, 0)
@@ -61,10 +61,12 @@ def find_alpha_discontinuities(alpha_steps, R0_map):
             continue
 
         R0_map_alpha, cluster_sizes, cluster_ids = rank_cluster_map(R0_map=R0_map_alpha, get_ranks=5)
-
         R0_map_d_alpha = np.where(R0_map > alpha_steps[index+1], 1, 0)
         R0_map_d_alpha, d_cluster_sizes = rank_cluster_map(R0_map=R0_map_d_alpha, get_ranks=1)[:2]
-        largest_cluster_size[index] = cluster_sizes[0] if len(cluster_sizes) > 0 else 0
+        if any(cluster_sizes) and len(cluster_sizes) < record_ranks:
+            cluster_sizes_vs_alpha[index][:len(cluster_sizes)] = cluster_sizes
+        elif any(cluster_sizes):
+            cluster_sizes_vs_alpha[index][:record_ranks] = cluster_sizes[:record_ranks]
 
         # clusters that join to form the largest cluster in the step alpha -> alpha + d_alpha
         cluster_joins = np.unique(R0_map_alpha[np.where(R0_map_d_alpha)])
@@ -76,18 +78,32 @@ def find_alpha_discontinuities(alpha_steps, R0_map):
 
         sizes = [cluster_sizes[rank - 1] for rank in cluster_joins]
         targets = [comb for comb in combinations(cluster_joins, 2) if 1 in comb]
+        if not targets:  # Not implemented: target joins do not consist of the rank 1 cluster
+            continue
+
         cluster_size_ratios = [cluster_sizes[comb[1] - 1] / cluster_sizes[comb[0] - 1] for comb in targets]
 
-        joins_at_alpha[index] = {'cluster_targets': targets, 'sizes': sizes, f'ratios' : cluster_size_ratios}
+        joins_at_alpha[index] = {'cluster_targets': targets, 'sizes': sizes, f'ratios': cluster_size_ratios}
 
-    largest_cluster_size[index+1] = d_cluster_sizes[0]
+        if plot_cluster_sizes_over_step:
+            from landscape_control.plotting_methods import plot_R0_clusters
+            plot_R0_clusters(R0_map_alpha, rank=5)
+            plot_R0_clusters(R0_map_d_alpha, rank=1)
+            print(joins_at_alpha[index])
+
+    cluster_sizes_vs_alpha[index+1][0] = d_cluster_sizes[0]  # append original size of cluster
+    largest_cluster_size = cluster_sizes_vs_alpha[:, 0]
     sorted_indices = np.argsort(np.gradient(np.gradient(largest_cluster_size)))[::-1]
+    if plot_cluster_sizes_over_step:
+        from landscape_control.plotting_methods import plot_cluster_size_with_xi
+        plot_cluster_size_with_xi(alpha_steps, record_ranks, cluster_sizes_vs_alpha)
 
     for c, index in enumerate(sorted_indices):
         try:
             if joins_at_alpha[index]:
-                # return the largest-rise in cluster size due to a cluster-cluster join.
-                return index, joins_at_alpha[index]['cluster_targets']
+                # i.e. return the largest-rise in cluster size due to a cluster-cluster join.
+                return index, joins_at_alpha[index]['cluster_targets']\
+
         except Exception as e:
             msg = f" Warning! Something went wrong, {e}"
             warnings.warn(msg)
@@ -264,18 +280,22 @@ def find_best(frag_method: Callable) -> Callable:
     is defined as |Ci| / N_cull, where i != 1 and N_cull is the number of removed patches.
     """
 
-    def iterator(R0_map: np.ndarray) -> tuple:
+    def iterator(R0_map: np.ndarray, debug: bool) -> tuple:
         iteration = 0
         best_payoff = 0
         optimal_indices = None
         alpha_steps = get_alpha_steps('auto', R0_max=7, R0_min=0.99, number_of_steps=30)
-        alpha_index, targets = find_alpha_discontinuities(alpha_steps, R0_map)
+        alpha_index, targets = find_alpha_discontinuities(alpha_steps, R0_map, plot_cluster_sizes_over_step=debug)
+        if debug:
+            print(f'\t # alpha steps = {len(alpha_steps)} | index = {alpha_index} | value = {alpha_steps[alpha_index]}')
+            print(f'\t {targets}')
+            assert 0
 
         for target in targets:  # todo handle combinations of joins to find best
-            if len(targets) > 1:
-                print(f'\t fragmenting targets : {target} | {iteration}/{len(targets)}')
+            if debug:
+                print(f'\t fragmenting targets : {target}')
 
-            connecting_patches_indices = frag_method(R0_map, target, alpha_steps[alpha_index:])
+            connecting_patches_indices = frag_method(R0_map, target, alpha_steps[alpha_index:], debug)
 
             if connecting_patches_indices is None:  # Error occurred
                 np.save(f'./data_store/exceptions/e_R0_map_{TIMESTAMP}', R0_map)
@@ -300,7 +320,7 @@ def find_best(frag_method: Callable) -> Callable:
 
 @find_best
 def alpha_stepping_method(R0_map: np.ndarray, targets: tuple = None,
-                          alpha_steps: list = None) -> tuple:
+                          alpha_steps: list = None, debug: bool = False) -> tuple:
     """
     Perform the /alpha-stepping method over the R0-map and return a tuple of  critically-connecting patch indices.
     """
@@ -311,7 +331,6 @@ def alpha_stepping_method(R0_map: np.ndarray, targets: tuple = None,
         # Iterate through alpha index until alpha = 0.99
         R0_alpha = rank_cluster_map(R0_map > alpha_steps[alpha_index])[0]
         R0_d_alpha = rank_cluster_map(R0_map > alpha_steps[alpha_index+1])[0]
-
         if not alpha_index:  # set targets on first iteration
             cluster_targets = np.where(R0_alpha == targets[0], 1, 0) + np.where(R0_alpha == targets[1], 2, 0)
 

@@ -36,13 +36,13 @@ class ClustersDidNotFragmentSave(Exception):
 
         if show:
             plt.title('Error pre-connected map')
-            plot_R0_clusters(rank_cluster_map(self.R0_discon)[0])
+            plot_R0_clusters(rank_cluster_map(self.R0_discon)[0], rank=1)
             plt.title('Error post-connected map')
-            plot_R0_clusters(rank_cluster_map(self.R0_connect)[0])
+            plot_R0_clusters(rank_cluster_map(self.R0_connect)[0], rank=2)
             plt.title('Error, domain did not fragment')
-            plot_R0_clusters(rank_cluster_map(self.R0_frag)[0])
+            plot_R0_clusters(rank_cluster_map(self.R0_frag)[0], rank=1)
             plt.title('Error, cluster targets')
-            plot_R0_clusters(self.cluster_targets)
+            plot_R0_clusters(self.cluster_targets, rank=1)
             if self.num:
                 plt.title(f'Error, connecting patches, number removed {self.num}')
                 plot_R0_clusters(self.connector_patches)

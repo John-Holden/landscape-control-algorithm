@@ -1,5 +1,7 @@
 import os
 import warnings
+
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .plotting_methods import plot_R0_clusters, plot_R0_map
@@ -104,15 +106,18 @@ def process_R0_map(R0_map_raw: np.ndarray, get_cluster: int, threshold: Union[in
     """
 
     R0_map = np.where(R0_map_raw > threshold, R0_map_raw, 0)  # consider above threshold positions
-
     R0_map = R0_map * np.array(rank_cluster_map(R0_map, get_ranks=get_cluster)[0] > 0).astype(
         int)  # concentrate on the largest cluster
 
     R0_indices = np.where(R0_map)
     R0_indices = [min(R0_indices[0]) - 2, max(R0_indices[0]) + 2, min(R0_indices[1]) - 2, max(R0_indices[1]) + 2]
     R0_map = R0_map[R0_indices[0]:R0_indices[1], R0_indices[2]: R0_indices[3]]  # trim domain and save.
+    R0_map_ = np.zeros(shape=(R0_map.shape[0]+2, R0_map.shape[1]+2))
+    R0_map_[1:-1, 1:-1] = R0_map
 
-    return R0_map
+    if any(R0_map_[0]) or any(R0_map_[-1]) or any(R0_map_[:, 0]) or any(R0_map_[:, -1]):
+        raise Exception('Domain did not get correctly re-shaped')
+    return R0_map_
 
 
 def get_clusters_over_betas(ensemble: Any, cg_factor: int = 5, get_rank: int = 1,

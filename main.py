@@ -4,7 +4,7 @@ from landscape_control import ClusterFrag, ScenarioTest
 from parameters_and_setup import EnsembleInfo
 
 from landscape_control.plotting_methods import plot_payoff_efficiencies_1
-from scripts.over_beta_processing import run_scenario_test_over_beta
+from scripts.R0_map_vs_beta_processing import run_scenario_test_over_beta
 
 def run_fragmentation():
     ensemble = EnsembleInfo('landscape_control_package')

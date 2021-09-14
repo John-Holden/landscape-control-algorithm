@@ -4,9 +4,9 @@ import numpy as np
 PATH_TO_INPUT_DATA = f'{os.getcwd()}/data_store'
 PATH_TO_EXCEPTIONS = f'{os.getcwd()}/data_store/exceptions/'
 
-STRUCTURING_ELEMENT1 = np.ones(shape=[3,3]) # defined nearest neighbourhood of land patches.
+STRUCTURING_ELEMENT1 = np.ones(shape=[3,3])  # defined nearest neighbourhood of land patches.
 STRUCTURING_ELEMENT2 = np.ones(shape=[3,3])
-STRUCTURING_ELEMENT2[(0, 0, 2, 2), (0, 2, 0, 2)] = 0 # defined nearest neighbourhood of land patches.
+STRUCTURING_ELEMENT2[(0, 0, 2, 2), (0, 2, 0, 2)] = 0  # defined nearest neighbourhood of land patches.
 STRUCTURING_ELEMENTS = {'MOORE': STRUCTURING_ELEMENT1,
                         'VON-N': STRUCTURING_ELEMENT2,
                         "MOORE2": np.ones(shape=[4, 4])}

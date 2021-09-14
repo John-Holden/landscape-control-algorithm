@@ -1,5 +1,7 @@
 import sys
 import datetime
+
+import matplotlib.pyplot as plt
 import numpy as np
 
 import warnings
@@ -8,6 +10,7 @@ from typing import Union, Tuple, Callable, Any
 from scipy.ndimage import binary_dilation, binary_fill_holes
 
 from ._cluster_find import rank_cluster_map
+from landscape_control.plotting_methods import plot_R0_clusters
 from .exceptions import ClustersDidNotFragmentSave, ClustersDidNotFragmentError
 from parameters_and_setup import STRUCTURING_ELEMENT
 
@@ -28,7 +31,8 @@ def get_alpha_steps(alpha_steps: Union[iter, float, int, str], R0_min:float, R0_
         raise NotImplementedError
 
 
-def patch_tidy(R0_map: np.ndarray, cluster_targets: np.ndarray, connector_patches: np.ndarray) -> np.ndarray:
+def patch_tidy(R0_map: np.ndarray, cluster_targets: np.ndarray, connector_patches: np.ndarray,
+               debug: bool = False) -> np.ndarray:
     """
     Identify and strip unnecessary critical patches - sometimes, the alpha-stepping method produces some extra
     patches, which if removed will have no influence on cluster connections. That is, a patch must lay in the interface
@@ -41,9 +45,10 @@ def patch_tidy(R0_map: np.ndarray, cluster_targets: np.ndarray, connector_patche
     connector_patches = np.logical_and(connector_patches1, connector_patches2)
     connector_patches = np.logical_and(connector_patches, R0_map)
 
-    if test_removal_disconnects(R0_map * np.logical_not(connector_patches), cluster_targets):
+    if test_removal_disconnects(R0_map * np.logical_not(connector_patches), cluster_targets, debug):
         return connector_patches
     else:
+        plot_R0_clusters(rank_cluster_map(R0_map * np.logical_not(connector_patches))[0], rank=5)
         raise ClustersDidNotFragmentError
 
 
@@ -87,8 +92,8 @@ def find_alpha_discontinuities(alpha_steps, R0_map, record_ranks: int = 3, plot_
 
         if plot_cluster_sizes_over_step:
             from landscape_control.plotting_methods import plot_R0_clusters
-            plot_R0_clusters(R0_map_alpha, rank=5)
-            plot_R0_clusters(R0_map_d_alpha, rank=1)
+            # plot_R0_clusters(R0_map_alpha, rank=5)
+            # plot_R0_clusters(R0_map_d_alpha, rank=1)
             print(joins_at_alpha[index])
 
     cluster_sizes_vs_alpha[index+1][0] = d_cluster_sizes[0]  # append original size of cluster
@@ -102,7 +107,7 @@ def find_alpha_discontinuities(alpha_steps, R0_map, record_ranks: int = 3, plot_
         try:
             if joins_at_alpha[index]:
                 # i.e. return the largest-rise in cluster size due to a cluster-cluster join.
-                return index, joins_at_alpha[index]['cluster_targets']\
+                return index, joins_at_alpha[index]['cluster_targets']
 
         except Exception as e:
             msg = f" Warning! Something went wrong, {e}"
@@ -111,20 +116,24 @@ def find_alpha_discontinuities(alpha_steps, R0_map, record_ranks: int = 3, plot_
     sys.exit('Error something went wrong @ find_alpha_discontinuities')
 
 
-def test_removal_disconnects(R0_fragmented: np.ndarray, cluster_targets: np.ndarray) -> bool:
+def test_removal_disconnects(R0_fragmented: np.ndarray, cluster_targets: np.ndarray, debug: bool = False) -> bool:
     """
     Test that the critically-connecting patches that have been identified break the largest cluster as expected.
     """
     R0_fragmented, sizes, ids = rank_cluster_map(R0_fragmented)
     # 1. If there is not more than 2 elements in the fragmented cluster, we have not fragmented the targets.
     # 2. If targets C1 and C2 belong to the same cluster in R0_fragmented, we have not fragmented the targets.
-    target_1_in_frag = np.unique(R0_fragmented[np.where(cluster_targets==1)])
-    target_2_in_frag = np.unique(R0_fragmented[np.where(cluster_targets==2)])
-
+    target_1_in_frag = np.unique(R0_fragmented[np.where(cluster_targets == 1)])
+    target_2_in_frag = np.unique(R0_fragmented[np.where(cluster_targets == 2)])
+    if debug:
+        print(f'sizes = {sizes} | len {len(sizes)}')
+        plot_R0_clusters(R0_fragmented, rank=3, title='fragmented domain')
+        plot_R0_clusters(cluster_targets, rank=2, title='cluster targets')
+        # TODO investigate why sometimes patches are missing
     try:
         assert len(target_1_in_frag) == 1, f'Error, expecting a single value in C1, found {target_1_in_frag}'
         assert len(target_2_in_frag) == 1, f'Error, expecting a single value in C2, found {target_2_in_frag}'
-        assert target_1_in_frag != target_2_in_frag, f'Error, C1 and C2 should not be equal, found C1, C2 \in ' \
+        assert target_1_in_frag != target_2_in_frag, f'Error, C1 and C2 should not be equal, found C1, C2 in ' \
                                                      f'{target_1_in_frag}'
     except Exception as e:
         print(e)
@@ -200,7 +209,7 @@ def get_payoff(patches: np.ndarray, R0_map: np.ndarray) -> float:
     return target_sizes[1] / len(patches)
 
 
-def targets_join_in_step(R0_d_alpha:np.ndarray, cluster_targets:np.ndarray) -> Union[bool, Any]:
+def targets_join_in_step(R0_d_alpha: np.ndarray, cluster_targets: np.ndarray) -> Union[bool, Any]:
     """ Test whether or not clusters-join for the alpha step. If not, return False, otherwise return the target."""
     targets_joined_rank = np.unique(R0_d_alpha[np.where(cluster_targets)])
     if len(targets_joined_rank) == 1 and targets_joined_rank[0]:
@@ -288,8 +297,14 @@ def find_best(frag_method: Callable) -> Callable:
         alpha_index, targets = find_alpha_discontinuities(alpha_steps, R0_map, plot_cluster_sizes_over_step=debug)
         if debug:
             print(f'\t # alpha steps = {len(alpha_steps)} | index = {alpha_index} | value = {alpha_steps[alpha_index]}')
-            print(f'\t {targets}')
-            assert 0
+            print(f'\t fragmenting targets: {targets}')
+            from landscape_control.plotting_methods import plot_R0_clusters
+            from landscape_control.domain_processing import rank_cluster_map
+            plot_R0_clusters(R0_map, rank=1, title='R0 map to fragment')
+            plot_R0_clusters(rank_cluster_map(R0_map > alpha_steps[alpha_index])[0],
+                             rank=4, title=f'R0 map prior to join @ {round(alpha_steps[alpha_index], 3)} ')
+            plot_R0_clusters(rank_cluster_map(R0_map > alpha_steps[alpha_index+1])[0],
+                             rank=4, title=f'R0 map prior to join @ {round(alpha_steps[alpha_index+1], 3)} ')
 
         for target in targets:  # todo handle combinations of joins to find best
             if debug:
@@ -331,6 +346,11 @@ def alpha_stepping_method(R0_map: np.ndarray, targets: tuple = None,
         # Iterate through alpha index until alpha = 0.99
         R0_alpha = rank_cluster_map(R0_map > alpha_steps[alpha_index])[0]
         R0_d_alpha = rank_cluster_map(R0_map > alpha_steps[alpha_index+1])[0]
+        if debug:
+            print(f'fragmention @ alpha step {alpha_index} / {len(alpha_steps) - 1}')
+            # plot_R0_clusters(R0_alpha, rank=2, title=f'Pre-join: alpha @ step {alpha_index} ')
+            # plot_R0_clusters(R0_d_alpha, rank=1, title=f'Post-join: alpha @ step {alpha_index+1}')
+
         if not alpha_index:  # set targets on first iteration
             cluster_targets = np.where(R0_alpha == targets[0], 1, 0) + np.where(R0_alpha == targets[1], 2, 0)
 
@@ -349,7 +369,7 @@ def alpha_stepping_method(R0_map: np.ndarray, targets: tuple = None,
         cluster_targets = update_targets_after_fragmentation(cluster_targets, patches_to_remove, R0_d_alpha)
         critical_joins += patches_to_remove
 
-    critical_joins = patch_tidy(R0_map, cluster_targets, critical_joins)
+    critical_joins = patch_tidy(R0_map, cluster_targets, critical_joins, debug)
     critical_joins = np.where(critical_joins)
 
     return tuple([int(i) for i in critical_joins[0]]), tuple([int(i) for i in critical_joins[1]])

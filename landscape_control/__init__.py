@@ -81,7 +81,7 @@ class ClusterFrag:
         time = datetime.datetime.now()
         for iteration in range(self.iterations):
             print(f'\t iteration {iteration}')
-            connector_patch_indices = alpha_stepping_method(R0_target, debug=False)
+            connector_patch_indices = alpha_stepping_method(R0_target, debug=iteration==12)
             connecting_patches[iteration] = connector_patch_indices
             R0_target = update_fragmentation_target(R0_map, connector_patch_indices)  # Update next fragmentation target
             R0_target = R0_target * R0_map
@@ -163,7 +163,7 @@ class ScenarioTest:
 
         time = datetime.datetime.now()
         for i, epi_c in enumerate(epi_centers):
-            print(f'{i}/ {len(epi_centers)}')
+            print(f'\t {i}/ {len(epi_centers)}')
             # Iterate through each epicenter
             assert epi_c not in self.scenario_store  # ignore edge-case epicenters that already exist
             self.scenario_store[epi_c] = {}

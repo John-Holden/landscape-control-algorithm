@@ -192,7 +192,7 @@ def plot_R0_map(R0_map: np.ndarray, save: bool = False, title: str = '', ext: st
 
 
 def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, epi_c: Union[None, tuple] = None,
-                           show_text: bool = False, save:bool= False):
+                           show_text: bool = False, save:bool= False, view:Optional=1):
     """
     `Plot the domain after it has been fragmented
     :param fragmented_domain: a spatial map of identified patche
@@ -203,9 +203,14 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
 
     frag_number = np.unique(fragmented_domain)
     frag_number = frag_number[1:] if 0 in frag_number else frag_number
-    colors = [f'C{i}' for i, line in enumerate(frag_number)]
+    if view == 1:
+        colors = [f'C{i}' for i, line in enumerate(frag_number)]
+    elif view == 2:
+        colors = [(1, 0, 0, 1)]
+
     colors.insert(0, 'white')
     colors.insert(1, 'lightgrey')
+    colors.insert(2, (0, 0, 0, 0.45))
 
     nbins = len(colors)
     cmap_name = 'my_list'
@@ -215,20 +220,27 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
     show_text_dict = {} if show_text else None
     fragmented_domain_ = np.zeros_like(fragmented_domain)
     for i, frag_line in enumerate(frag_number):
-        fragmented_domain_[np.where(fragmented_domain == frag_line)] = i + 2
+        if view == 1:  # cull lines to reflect iteration
+            fragmented_domain_[np.where(fragmented_domain == frag_line)] = i + 3
+        elif view == 2:  # cull lines as solid red
+            fragmented_domain_[np.where(fragmented_domain == frag_line)] = 3
         if show_text:
             show_text_dict[frag_line] = i + 2
 
     # Include background of R0 map having numerical value 1 shown as light-grey
     R0_map[np.where(fragmented_domain)] = 0
+    fragmented_domain = rank_cluster_map(R0_map)[0]
+    confinement_cluster = np.where(fragmented_domain == fragmented_domain[epi_c], 1, 0)[0]
+    print(confinement_cluster)
     fragmented_domain_ += np.where(R0_map > 1, 1, 0)
+    fragmented_domain_ += confinement_cluster
 
     im = plt.imshow(fragmented_domain_, cmap=cm)
     plt.colorbar(im)
 
     # Optional, show epicenter
     if epi_c is not None:
-        circle = plt.Circle((epi_c[1], epi_c[0]), 0.5, fc='black', ec="red")
+        circle = plt.Circle((epi_c[1], epi_c[0]), 0.5, fc='red', ec="red")
         plt.gca().add_patch(circle)
 
     # Optional, display fragmentation iteration next to spatial line
@@ -259,13 +271,12 @@ def plot_payoffs_over_beta(payoff: np.ndarray, betas: np.ndarray, max_beta_index
         ax.scatter([betas[i]]*payoff.shape[1], result, marker='x')
         ax.plot([betas[i]]*payoff.shape[1], result)
 
-
     ax.plot(betas, payoff[:, -1], ls='--', c='black', alpha=0.75)
     plt.xticks(rotation=15)
+    # plt.yscale('log')
     if save:
         plt.savefig('payoff_over_beta.pdf')
     plt.show()
-
 
 
 def process_payoffs(payoff_store: dict, plot: bool = False, title: Optional[str] = None):

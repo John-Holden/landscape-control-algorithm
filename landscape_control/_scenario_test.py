@@ -10,7 +10,6 @@ from parameters_and_setup import STRUCTURING_ELEMENT
 from .plotting_methods import plot_fragmented_domain, plot_R0_clusters
 
 
-
 def fragment_combination(iterations: int) -> list:
     """
     Find all combinations for given iteration
@@ -21,9 +20,8 @@ def fragment_combination(iterations: int) -> list:
         comb = list(itertools.combinations(iter_, r=i))
         if len(comb) == 0:
             continue
-
         frag_comb.extend(comb)
-
+    frag_comb = [i for i in frag_comb if len(i) < 5]
     return frag_comb
 
 

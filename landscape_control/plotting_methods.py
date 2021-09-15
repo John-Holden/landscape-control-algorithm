@@ -2,7 +2,6 @@ import pprint
 import warnings
 import numpy as np
 import matplotlib
-import seaborn as sns
 from typing import Optional
 import matplotlib.pyplot as plt
 from typing import Union, Iterable
@@ -429,6 +428,7 @@ def plot_cluster_size_distribution(cluster_sizes: np.array, betas: np.ndarray, s
     :param cluster_sizes:
     :return:
     """
+    import seaborn as sns
 
     fig, ax = plt.subplots(figsize=(8, 6))
     assert len(betas) == len(cluster_sizes)
@@ -470,6 +470,7 @@ def host_density_map(density_map: np.ndarray):
     :param density_map:
     :return:
     """
+    import seaborn as sns
     fig, ax = plt.subplots(figsize=(9, 10))
     # ax.set_axis_off()
     divider = make_axes_locatable(ax)
@@ -483,6 +484,7 @@ def host_density_map(density_map: np.ndarray):
     plt.show()
 
     fig, ax = plt.subplots(figsize=(9, 10))
+
     # ax.set_axis_off()
     # ax = ax.imshow(density_map[680:690, 510:520], vmax=0.10, cmap='viridis')  # cg = 1
     # ax = ax.imshow(density_map[int(680/5):int(690/5), int(510/5):int(520/5)], vmax=0.10, cmap='viridis')
@@ -500,6 +502,7 @@ def host_distribution_flat(data: np.ndarray, print_stats: bool=False):
     :return:
     """
     from scipy.optimize import curve_fit
+    import seaborn as sns
 
     fig, ax = plt.subplots(figsize=(8, 4))
     sns.histplot(data, log_scale=False, stat='density', ax=ax, alpha=0.50, edgecolor=None)

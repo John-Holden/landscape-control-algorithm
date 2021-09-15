@@ -81,14 +81,14 @@ class ClusterFrag:
         time = datetime.datetime.now()
         for iteration in range(self.iterations):
             print(f'\t iteration {iteration}')
-            connector_patch_indices = alpha_stepping_method(R0_target, debug=iteration==12)
+            connector_patch_indices = alpha_stepping_method(R0_target, debug=False)
             connecting_patches[iteration] = connector_patch_indices
             R0_target = update_fragmentation_target(R0_map, connector_patch_indices)  # Update next fragmentation target
             R0_target = R0_target * R0_map
             connecting_patches[f'{iteration}_size'] = len(np.where(R0_target)[0]) * self.cg_factor**2
             fragmented_domain[connector_patch_indices] = iteration + 1
 
-            if plot:
+            if plot and iteration % 2 == 0:
                 plt.title(f'Fragmented to {self.iterations} iterations')
                 plot_fragmented_domain(fragmented_domain, R0_map, save=True)
                 plot_R0_clusters(np.where(R0_map > 1, 1, 0) * np.where(fragmented_domain, 0, 1), rank=iteration+2,
@@ -149,7 +149,7 @@ class ScenarioTest:
         self.plot_R0_clusters = plot_R0_clusters
         self.plot_fragmented_domain = plot_fragmented_domain
 
-    def find_all_payoffs(self, plot_check: bool = False) -> Tuple[dict, int]:
+    def find_all_payoffs(self, plot_check: bool = False, verbose: bool = False) -> Tuple[dict, int]:
         """
         For a sample of random epicenters, find the payoff : N_saved / N_culled
         """
@@ -163,11 +163,14 @@ class ScenarioTest:
 
         time = datetime.datetime.now()
         for i, epi_c in enumerate(epi_centers):
-            print(f'\t {i}/ {len(epi_centers)}')
+            print(f'\t epicentre: {i}/ {len(epi_centers)}')
             # Iterate through each epicenter
             assert epi_c not in self.scenario_store  # ignore edge-case epicenters that already exist
             self.scenario_store[epi_c] = {}
             for c, comb in enumerate(containment_combos):
+                if verbose and len(comb) / (c+1) % 10 == 0:
+                    print(f'\t\t combination: {c+1} / {len(comb)+1}')
+
                 # Iterate through all combinations of containment
                 R0_fragmented, fragment_lines = self.domain_at_iteration(self.R0_domain, self.fragmented_domain, comb)
 

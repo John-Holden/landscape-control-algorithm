@@ -29,7 +29,7 @@ def get_efficiency_over_beta(package_name: str, sample_size: int = 5, save: Opti
     path = f'{PATH_TO_INPUT_DATA}/{package_name}/fragmentation_payoff_data'
     beta_indices = [i for i in range(len(ensemble.betas))] if beta_indices is None else beta_indices
     payoff = np.zeros((len(ensemble.betas), sample_size))
-    iterations = '20'
+    iterations = 'auto'
     cg = 5
     for i in beta_indices:
         print(f'loading beta index: {i}')
@@ -60,13 +60,13 @@ def get_efficiency_over_beta(package_name: str, sample_size: int = 5, save: Opti
 
 def run_fragmentation_over_beta(package_name: str):
     ensemble = EnsembleInfo(package_name)
-    beta_inds = [19]
+    beta_inds = [20]
     cg_factor = 5
-    iters = [20] * len(beta_inds)
+    iters = [16] * len(beta_inds)
     for i, beta_ind in enumerate(beta_inds):
         print(f'Running beta {round(ensemble.betas[beta_ind], 5)}, for {iters[i]} iterations ')
         c_frag = ClusterFrag(ensemble, cg_factor=cg_factor, beta_index=beta_ind, iterations=iters[i])
-        result = c_frag.execute(plot=False)
+        result = c_frag.execute(plot=True)
         print(f'success : {result} ')
 
 
@@ -159,12 +159,12 @@ def run_scenario_test_over_beta(package_name: str, job_id: Union[None, str] = No
             print(f'\t skipping beta index {beta_index}')
             return
         print(f'Running beta index {beta_index}')
-        scenario_test.find_all_payoffs(plot_check=False)
+        scenario_test.find_all_payoffs(plot_check=False, verbose=True)
         return
 
-    for beta_index in [i for i in range(5, 21, 1)]:
+    for beta_index in [1]:
         print(f'Running beta index {beta_index}')
-        scenario_test = ScenarioTest(package_name, beta_index, cg_factor=5, iterations=20)
+        scenario_test = ScenarioTest(package_name, beta_index, cg_factor=5, iterations=10)
         if not scenario_test.is_valid:
             print(f'skipping beta index {beta_index}')
             continue
@@ -220,6 +220,6 @@ if __name__ == '__main__':
     # get_plot_cluster_size_vs_fragmentation('landscape_control_package_2021-07-10_ga-phi1')
     # run_fragmentation_over_beta('landscape_control_package_2021-07-10_ga-phi1')
     # run_scenario_test_over_beta('landscape_control_package_2021-07-10_ga-phi1')
-    get_efficiency_over_beta('landscape_control_package_2021-07-10_ga-phi1', save=True)
+    get_efficiency_over_beta('landscape_control_package_2021-07-10_ga-phi1', save=False)
     # cluster_size_over_beta('landscape_control_package_2021-07-12_ga-phi2', cg=2)
     # plot_multi_cluster_size_over_beta(['landscape_control_package_2021-07-10_ga-phi1'])

@@ -34,8 +34,7 @@ if __name__ == '__main__':
     if 'HPC_MODE' in os.environ:
         assert os.environ['HPC_MODE'] == 'TRUE'
         assert len(sys.argv) == 2 and sys.argv[1].isdigit()
-        run_scenario_test_over_beta('landscape_control_package_adb_pl', sys.argv[1])
+        run_scenario_test_over_beta('landscape_control_package_2021-07-10_ga-phi1', sys.argv[1])
 
     else:
         run_scenario_test()
-        # run_scenario_test_over_beta('landscape_control_package_2021-07-10_ga-phi1')

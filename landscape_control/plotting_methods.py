@@ -231,7 +231,6 @@ def plot_fragmented_domain(fragmented_domain: np.ndarray, R0_map: np.ndarray, ep
     R0_map[np.where(fragmented_domain)] = 0
     fragmented_domain = rank_cluster_map(R0_map)[0]
     confinement_cluster = np.where(fragmented_domain == fragmented_domain[epi_c], 1, 0)[0]
-    print(confinement_cluster)
     fragmented_domain_ += np.where(R0_map > 1, 1, 0)
     fragmented_domain_ += confinement_cluster
 
@@ -313,7 +312,6 @@ def process_payoffs(payoff_store: dict, plot: bool = False, title: Optional[str]
     payoff = payoff[order]
     N_saved = N_saved[order]
     N_culled = N_culled[order]
-
     if plot:
         plot_payoff_efficiencies_1(payoff, title)
 

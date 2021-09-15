@@ -21,7 +21,6 @@ def fragment_combination(iterations: int) -> list:
         if len(comb) == 0:
             continue
         frag_comb.extend(comb)
-    frag_comb = [i for i in frag_comb if len(i) < 5]
     return frag_comb
 
 
@@ -50,7 +49,8 @@ def get_epi_c(R0_domain: np.ndarray, fragmented_domain: np.ndarray) -> Tuple:
 def domain_at_iteration(R0_domain: np.ndarray, fragmented_domain: np.ndarray,
                         iterations: Union[int, Iterable]) -> Tuple[Union[None, np.ndarray], np.ndarray]:
     """
-    Find fragmented domain @ given iteration
+    Find fragmented domain @ for the given iteration(s)
+        - if the domain is fragmented, return the R0-domain and the associated domain lines
     """
     fragment_lines = np.zeros_like(R0_domain)
     if isinstance(iterations, int):
@@ -58,6 +58,7 @@ def domain_at_iteration(R0_domain: np.ndarray, fragmented_domain: np.ndarray,
 
     R0_fragmented = np.copy(R0_domain)
     for iteration in iterations:
+        # iteratively remove connecting patches
         R0_fragmented = R0_fragmented * np.logical_not(fragmented_domain == iteration)
         fragment_lines += np.where(fragmented_domain == iteration, iteration, 0)
 
@@ -81,11 +82,12 @@ def get_epicenter_payoff(epicenter: tuple, R0_fragmented: np.ndarray,
     arr_mask = np.zeros_like(R0_fragmented)
     arr_mask[target] = 1
 
+    # negate connecting patches that do not neighbour the bounding cluster
     bd_target = binary_dilation(arr_mask, structure=STRUCTURING_ELEMENT)
 
     fragment_lines = np.logical_and(fragment_lines, bd_target) * fragment_lines
 
-    relevant_lines = np.unique(fragment_lines)
+    relevant_lines = np.unique(fragment_lines)  # i.e. only the containing portion
     relevant_lines = [int(line) for line in relevant_lines if line != 0]
     num_culled = len(np.where(fragment_lines)[0])
 
@@ -105,6 +107,6 @@ def add_rank_to_dict(payoffs: list, epicenters: list, relevant_lines: list, scen
     relevant_lines = relevant_lines[ranked_args]
     ranks = range(1, len(relevant_lines)+1)
     for epi, line, rank in zip(epicenters, relevant_lines, ranks):
-        scenario_store[tuple(epi)][line]['rank'] = rank
+        scenario_store[tuple(epi)][tuple(line)]['rank'] = rank
 
     return scenario_store

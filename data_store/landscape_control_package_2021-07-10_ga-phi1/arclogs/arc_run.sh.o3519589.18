@@ -1,0 +1,28 @@
+## Running job 3519589.18 on host dc1s1b3c.arc3.leeds.ac.uk
+##
+## Resources granted:
+##
+## h_vmem = 1G
+## h_rt   = 48:00:00
+## disk   = 1G
+
+Running beta index 17
+	 epicentre: 0/ 18
+	 epicentre: 1/ 18
+	 epicentre: 2/ 18
+	 epicentre: 3/ 18
+	 epicentre: 4/ 18
+	 epicentre: 5/ 18
+	 epicentre: 6/ 18
+	 epicentre: 7/ 18
+	 epicentre: 8/ 18
+	 epicentre: 9/ 18
+	 epicentre: 10/ 18
+	 epicentre: 11/ 18
+	 epicentre: 12/ 18
+	 epicentre: 13/ 18
+	 epicentre: 14/ 18
+	 epicentre: 15/ 18
+	 epicentre: 16/ 18
+	 epicentre: 17/ 18
+Time taken to fragment 16 iterations: 0:37:08.593847

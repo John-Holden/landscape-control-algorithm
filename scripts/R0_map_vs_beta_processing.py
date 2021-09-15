@@ -1,5 +1,5 @@
 import os
-import pickle5 as pickle
+import pickle
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
@@ -162,9 +162,9 @@ def run_scenario_test_over_beta(package_name: str, job_id: Union[None, str] = No
         scenario_test.find_all_payoffs(plot_check=False, verbose=True)
         return
 
-    for beta_index in [1]:
+    for beta_index in [4]:
         print(f'Running beta index {beta_index}')
-        scenario_test = ScenarioTest(package_name, beta_index, cg_factor=5, iterations=10)
+        scenario_test = ScenarioTest(package_name, beta_index, cg_factor=5)
         if not scenario_test.is_valid:
             print(f'skipping beta index {beta_index}')
             continue
